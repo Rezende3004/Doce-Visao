@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Produção — DoceVisão</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+</head>
+<body>
+    <nav class="sidebar">
+        <div class="logo">🧁 DoceVisão</div>
+        <ul class="menu">
+            <li><a href="../index.html">📊 Visão Geral</a></li>
+            <li><a href="produtos.html">🍰 Produtos</a></li>
+            <li><a href="canais.html">📅 Canais e Períodos</a></li>
+            <li><a href="producao.html" class="active">🏭 Produção</a></li>
+            <li><a href="insights.html">💡 Insights</a></li>
+            <li><a href="importacao.html">📥 Importação</a></li>
+            <li><a href="ml.html">🤖 Análise Inteligente</a></li>
+            <li><a href="ml.html">🤖 Análise Inteligente</a></li>
+            <li><a href="sobre.html">📖 Sobre</a></li>
+        </ul>
+    </nav>
+
+    <main class="content">
+        <header>
+            <h1>Produção e Desperdício</h1>
+            <div class="filters">
+                <label>
+                    Data inicial:
+                    <input type="date" id="startDate" value="2025-01-01">
+                </label>
+                <label>
+                    Data final:
+                    <input type="date" id="endDate" value="2025-07-31">
+                </label>
+                <button id="applyFilters" class="btn-primary">Aplicar</button>
+            </div>
+        </header>
+
+        <section class="kpi-cards" id="kpiCards"></section>
+
+        <section class="chart-container">
+            <h2>Desperdício por Produto</h2>
+            <div id="wasteChart"></div>
+            <table id="wasteTable"></table>
+        </section>
+    </main>
+
+    <script src="../js/api.js"></script>
+    <script src="../js/charts.js"></script>
+    <script>
+        async function loadProduction() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            const params = { start_date: startDate, end_date: endDate };
+
+            try {
+                const waste = await API.getWaste(params);
+                
+                if (waste.length === 0) {
+                    document.querySelector('.content').innerHTML += `
+                        <div class="alert alert-info">
+                            Sem dados de produção importados. Importe dados de produção na página de Importação.
+                        </div>
+                    `;
+                    return;
+                }
+
+                const totalProduced = waste.reduce((sum, w) => sum + w.produced, 0);
+                const totalSold = waste.reduce((sum, w) => sum + w.sold, 0);
+                const totalDiscarded = waste.reduce((sum, w) => sum + w.discarded, 0);
+                const overallRate = totalProduced > 0 ? (totalDiscarded / totalProduced * 100) : 0;
+
+                document.getElementById('kpiCards').innerHTML = `
+                    <div class="card"><h3>Produzido</h3><div class="value">${totalProduced}</div></div>
+                    <div class="card"><h3>Vendido</h3><div class="value">${totalSold}</div></div>
+                    <div class="card"><h3>Descartado</h3><div class="value">${totalDiscarded}</div></div>
+                    <div class="card"><h3>Taxa de Desperdício</h3><div class="value">${overallRate.toFixed(1)}%</div></div>
+                `;
+
+                createGroupedBarChart(
+                    'wasteChart',
+                    waste.map(w => w.product_name),
+                    waste.map(w => w.sold),
+                    waste.map(w => w.discarded),
+                    'Vendido',
+                    'Descartado'
+                );
+
+                document.getElementById('wasteTable').innerHTML = `
+                    <thead><tr><th>Produto</th><th>Produzido</th><th>Vendido</th><th>Descartado</th><th>Taxa</th></tr></thead>
+                    <tbody>${waste.map(w => `<tr><td>${w.product_name}</td><td>${w.produced}</td><td>${w.sold}</td><td>${w.discarded}</td><td>${w.waste_rate.toFixed(1)}%</td></tr>`).join('')}</tbody>
+                `;
+
+            } catch (error) {
+                console.error('Erro:', error);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('applyFilters').addEventListener('click', loadProduction);
+            loadProduction();
+        });
+    </script>
+</body>
+</html>

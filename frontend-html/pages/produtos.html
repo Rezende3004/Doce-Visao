@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Produtos — DoceVisão</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+</head>
+<body>
+    <nav class="sidebar">
+        <div class="logo">🧁 DoceVisão</div>
+        <ul class="menu">
+            <li><a href="../index.html">📊 Visão Geral</a></li>
+            <li><a href="produtos.html" class="active">🍰 Produtos</a></li>
+            <li><a href="canais.html">📅 Canais e Períodos</a></li>
+            <li><a href="producao.html">🏭 Produção</a></li>
+            <li><a href="insights.html">💡 Insights</a></li>
+            <li><a href="importacao.html">📥 Importação</a></li>
+            <li><a href="ml.html">🤖 Análise Inteligente</a></li>
+            <li><a href="ml.html">🤖 Análise Inteligente</a></li>
+            <li><a href="sobre.html">📖 Sobre</a></li>
+        </ul>
+    </nav>
+
+    <main class="content">
+        <header>
+            <h1>Produtos</h1>
+            <div class="filters">
+                <label>
+                    Data inicial:
+                    <input type="date" id="startDate" value="2025-01-01">
+                </label>
+                <label>
+                    Data final:
+                    <input type="date" id="endDate" value="2025-07-31">
+                </label>
+                <button id="applyFilters" class="btn-primary">Aplicar</button>
+            </div>
+        </header>
+
+        <section class="chart-container">
+            <h2>Ranking por Quantidade Vendida</h2>
+            <div id="rankingQtyChart"></div>
+            <table id="rankingQtyTable"></table>
+        </section>
+
+        <section class="chart-container">
+            <h2>Ranking por Faturamento</h2>
+            <div id="rankingRevChart"></div>
+        </section>
+
+        <section class="chart-container">
+            <h2>Desempenho por Categoria</h2>
+            <div id="categoryChart"></div>
+            <table id="categoryTable"></table>
+        </section>
+
+        <section class="chart-container">
+            <h2>Margem Estimada</h2>
+            <div id="marginInfo"></div>
+        </section>
+    </main>
+
+    <script src="../js/api.js"></script>
+    <script src="../js/charts.js"></script>
+    <script>
+        async function loadProducts() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            const params = { start_date: startDate, end_date: endDate };
+
+            try {
+                const rankingQty = await API.getRanking({ ...params, sort_by: 'quantity', limit: 15 });
+                if (rankingQty.length > 0) {
+                    createBarChart('rankingQtyChart', rankingQty.map(p => p.product_name), rankingQty.map(p => p.quantity), '');
+                    document.getElementById('rankingQtyTable').innerHTML = `
+                        <thead><tr><th>Produto</th><th>Categoria</th><th>Quantidade</th><th>Faturamento</th></tr></thead>
+                        <tbody>${rankingQty.map(p => `<tr><td>${p.product_name}</td><td>${p.category}</td><td>${p.quantity}</td><td>${p.faturamento}</td></tr>`).join('')}</tbody>
+                    `;
+                }
+
+                const rankingRev = await API.getRanking({ ...params, sort_by: 'revenue', limit: 15 });
+                if (rankingRev.length > 0) {
+                    createBarChart('rankingRevChart', rankingRev.map(p => p.product_name), rankingRev.map(p => p.faturamento_cents / 100), '', '#8B5CF6');
+                }
+
+                const categories = await API.getCategoryPerformance(params);
+                if (categories.length > 0) {
+                    createBarChart('categoryChart', categories.map(c => c.category), categories.map(c => c.faturamento_cents / 100), '', '#F59E0B');
+                    document.getElementById('categoryTable').innerHTML = `
+                        <thead><tr><th>Categoria</th><th>Quantidade</th><th>Faturamento</th><th>Participação</th></tr></thead>
+                        <tbody>${categories.map(c => `<tr><td>${c.category}</td><td>${c.quantity}</td><td>${c.faturamento}</td><td>${c.share_percentual.toFixed(1)}%</td></tr>`).join('')}</tbody>
+                    `;
+                }
+
+                const margin = await API.getMargin(params);
+                const marginDiv = document.getElementById('marginInfo');
+                if (margin.coverage_percentual < 50) {
+                    marginDiv.innerHTML += `<div class="alert alert-warning">Cobertura de custos: apenas ${margin.coverage_percentual.toFixed(0)}% das vendas possuem dados de custo.</div>`;
+                }
+                marginDiv.innerHTML += `
+                    <div class="kpi-cards">
+                        <div class="card"><h3>Faturamento</h3><div class="value">${margin.faturamento}</div></div>
+                        <div class="card"><h3>Custo Total</h3><div class="value">${margin.custo_total}</div></div>
+                        <div class="card"><h3>Margem</h3><div class="value">${margin.margem}</div><div class="delta">${margin.margem_percentual.toFixed(1)}%</div></div>
+                    </div>
+                `;
+
+            } catch (error) {
+                console.error('Erro:', error);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('applyFilters').addEventListener('click', loadProducts);
+            loadProducts();
+        });
+    </script>
+</body>
+</html>

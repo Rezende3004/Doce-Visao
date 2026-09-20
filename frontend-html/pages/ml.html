@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Análise Inteligente — DoceVisão</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+</head>
+<body>
+    <nav class="sidebar">
+        <div class="logo">🧁 DoceVisão</div>
+        <ul class="menu">
+            <li><a href="../index.html">📊 Visão Geral</a></li>
+            <li><a href="produtos.html">🍰 Produtos</a></li>
+            <li><a href="canais.html">📅 Canais e Períodos</a></li>
+            <li><a href="producao.html">🏭 Produção</a></li>
+            <li><a href="insights.html">💡 Insights</a></li>
+            <li><a href="importacao.html">📥 Importação</a></li>
+            <li><a href="ml.html">🤖 Análise Inteligente</a></li>
+            <li><a href="ml.html">🤖 Análise Inteligente</a></li>
+            <li><a href="ml.html" class="active">🤖 Análise Inteligente</a></li>
+            <li><a href="sobre.html">📖 Sobre</a></li>
+        </ul>
+    </nav>
+
+    <main class="content">
+        <header>
+            <h1>🤖 Análise Inteligente</h1>
+            <div class="filters">
+                <label>
+                    Data inicial:
+                    <input type="date" id="startDate" value="2025-01-01">
+                </label>
+                <label>
+                    Data final:
+                    <input type="date" id="endDate" value="2025-07-31">
+                </label>
+                <button id="applyFilters" class="btn-primary">Aplicar</button>
+            </div>
+        </header>
+
+        <section class="chart-container">
+            <h2>📈 Previsão de Demanda</h2>
+            <p>Previsão baseada em séries temporais com Prophet (sazonalidade semanal e anual)</p>
+            <div class="filters" style="margin: 1rem 0;">
+                <label>
+                    Dias para prever:
+                    <select id="forecastDays">
+                        <option value="7">7 dias</option>
+                        <option value="14">14 dias</option>
+                        <option value="30" selected>30 dias</option>
+                        <option value="60">60 dias</option>
+                        <option value="90">90 dias</option>
+                    </select>
+                </label>
+                <button id="forecastBtn" class="btn-secondary">Gerar Previsão</button>
+            </div>
+            <div id="forecastChart"></div>
+            <div id="forecastMetrics"></div>
+        </section>
+
+        <section class="chart-container">
+            <h2>🔍 Detecção de Anomalias</h2>
+            <p>Vendas atípicas detectadas com Isolation Forest</p>
+            <div class="filters" style="margin: 1rem 0;">
+                <label>
+                    Contaminação esperada:
+                    <select id="contamination">
+                        <option value="0.01">1% (mais rigoroso)</option>
+                        <option value="0.05" selected>5%</option>
+                        <option value="0.10">10% (mais permissivo)</option>
+                    </select>
+                </label>
+                <button id="anomalyBtn" class="btn-secondary">Detectar Anomalias</button>
+            </div>
+            <div id="anomalyResults"></div>
+        </section>
+
+        <section class="chart-container">
+            <h2>🎯 Clusterização de Produtos</h2>
+            <p>Agrupamento de produtos por comportamento de vendas (K-means)</p>
+            <div class="filters" style="margin: 1rem 0;">
+                <label>
+                    Número de clusters:
+                    <select id="nClusters">
+                        <option value="2">2 clusters</option>
+                        <option value="3" selected>3 clusters</option>
+                        <option value="4">4 clusters</option>
+                        <option value="5">5 clusters</option>
+                    </select>
+                </label>
+                <button id="clusterBtn" class="btn-secondary">Clusterizar</button>
+                <button id="elbowBtn" class="btn-secondary">Método do Cotovelo</button>
+            </div>
+            <div id="clusterResults"></div>
+        </section>
+
+        <section class="chart-container">
+            <h2>📊 Classificação de Tendências</h2>
+            <p>Análise de tendência (crescente/decrescente/estável) por produto</p>
+            <button id="trendBtn" class="btn-secondary" style="margin: 1rem 0;">Analisar Tendências</button>
+            <div id="trendResults"></div>
+        </section>
+
+        <section class="chart-container">
+            <h2>🔄 Análise de Sazonalidade</h2>
+            <p>Padrões sazonais nas vendas</p>
+            <div class="filters" style="margin: 1rem 0;">
+                <label>
+                    Período:
+                    <select id="seasonalityPeriod">
+                        <option value="weekly" selected>Semanal</option>
+                        <option value="monthly">Mensal</option>
+                        <option value="quarterly">Trimestral</option>
+                    </select>
+                </label>
+                <button id="seasonalityBtn" class="btn-secondary">Analisar</button>
+            </div>
+            <div id="seasonalityChart"></div>
+            <div id="seasonalityResults"></div>
+        </section>
+    </main>
+
+    <script src="../js/api.js"></script>
+    <script src="../js/charts.js"></script>
+    <script>
+        async function loadForecast() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            const days = document.getElementById('forecastDays').value;
+
+            try {
+                const response = await fetch(`${API_URL}/api/v1/ml/forecast/demand?start_date=${startDate}&end_date=${endDate}&days=${days}`);
+                const data = await response.json();
+
+                if (!data.success) {
+                    document.getElementById('forecastMetrics').innerHTML = `<div class="alert alert-warning">${data.message}</div>`;
+                    return;
+                }
+
+                const historical = data.forecast.filter(f => f.is_historical);
+                const future = data.forecast.filter(f => !f.is_historical);
+
+                const trace1 = {
+                    x: historical.map(f => f.date),
+                    y: historical.map(f => f.predicted),
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'Histórico',
+                    line: { color: '#D4577B' },
+                };
+
+                const trace2 = {
+                    x: future.map(f => f.date),
+                    y: future.map(f => f.predicted),
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'Previsão',
+                    line: { color: '#8B5CF6', dash: 'dash' },
+                };
+
+                const trace3 = {
+                    x: [...future.map(f => f.date), ...future.map(f => f.date).reverse()],
+                    y: [...future.map(f => f.upper_bound), ...future.map(f => f.lower_bound).reverse()],
+                    type: 'scatter',
+                    mode: 'lines',
+                    fill: 'toself',
+                    fillcolor: 'rgba(139, 92, 246, 0.2)',
+                    line: { color: 'transparent' },
+                    name: 'Intervalo de Confiança',
+                    showlegend: true,
+                };
+
+                const layout = {
+                    xaxis: { title: 'Data' },
+                    yaxis: { title: 'Faturamento (R$)' },
+                    height: 400,
+                    margin: { t: 40, b: 40, l: 60, r: 20 },
+                };
+
+                Plotly.newPlot('forecastChart', [trace1, trace2, trace3], layout, { responsive: true });
+
+                document.getElementById('forecastMetrics').innerHTML = `
+                    <div class="kpi-cards">
+                        <div class="card">
+                            <h3>Média Prevista</h3>
+                            <div class="value">R$ ${(data.metrics.avg_predicted / 100).toFixed(2)}</div>
+                        </div>
+                        <div class="card">
+                            <h3>Máximo Previsto</h3>
+                            <div class="value">R$ ${(data.metrics.max_predicted / 100).toFixed(2)}</div>
+                        </div>
+                        <div class="card">
+                            <h3>Dias Previstos</h3>
+                            <div class="value">${data.metrics.forecast_days}</div>
+                        </div>
+                    </div>
+                `;
+
+            } catch (error) {
+                console.error('Erro:', error);
+                document.getElementById('forecastMetrics').innerHTML = `<div class="alert alert-danger">Erro ao gerar previsão</div>`;
+            }
+        }
+
+        async function loadAnomalies() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            const contamination = document.getElementById('contamination').value;
+
+            try {
+                const response = await fetch(`${API_URL}/api/v1/ml/anomalies/sales?start_date=${startDate}&end_date=${endDate}&contamination=${contamination}`);
+                const data = await response.json();
+
+                if (!data.success) {
+                    document.getElementById('anomalyResults').innerHTML = `<div class="alert alert-warning">${data.message}</div>`;
+                    return;
+                }
+
+                let html = `
+                    <div class="kpi-cards">
+                        <div class="card">
+                            <h3>Total de Registros</h3>
+                            <div class="value">${data.metrics.total_records}</div>
+                        </div>
+                        <div class="card">
+                            <h3>Anomalias Detectadas</h3>
+                            <div class="value">${data.metrics.anomalies_detected}</div>
+                        </div>
+                        <div class="card">
+                            <h3>Taxa de Anomalia</h3>
+                            <div class="value">${data.metrics.anomaly_rate.toFixed(2)}%</div>
+                        </div>
+                    </div>
+                `;
+
+                if (data.anomalies.length > 0) {
+                    html += `
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Produto</th>
+                                    <th>Quantidade</th>
+                                    <th>Total (R$)</th>
+                                    <th>Score</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.anomalies.map(a => `
+                                    <tr>
+                                        <td>${a.date}</td>
+                                        <td>${a.product}</td>
+                                        <td>${a.quantity}</td>
+                                        <td>R$ ${(a.total_cents / 100).toFixed(2)}</td>
+                                        <td>${a.anomaly_score.toFixed(3)}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                }
+
+                document.getElementById('anomalyResults').innerHTML = html;
+
+            } catch (error) {
+                console.error('Erro:', error);
+                document.getElementById('anomalyResults').innerHTML = `<div class="alert alert-danger">Erro ao detectar anomalias</div>`;
+            }
+        }
+
+        async function loadClusters() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            const nClusters = document.getElementById('nClusters').value;
+
+            try {
+                const response = await fetch(`${API_URL}/api/v1/ml/clustering/products?start_date=${startDate}&end_date=${endDate}&n_clusters=${nClusters}`);
+                const data = await response.json();
+
+                if (!data.success) {
+                    document.getElementById('clusterResults').innerHTML = `<div class="alert alert-warning">${data.message}</div>`;
+                    return;
+                }
+
+                let html = '<div class="kpi-cards">';
+                data.clusters.forEach(cluster => {
+                    const summary = data.summary[cluster.cluster_id];
+                    html += `
+                        <div class="card">
+                            <h3>Cluster ${cluster.cluster_id}: ${summary.label}</h3>
+                            <div class="value">${cluster.size} produtos</div>
+                            <p style="font-size: 0.875rem; margin-top: 0.5rem;">${summary.description}</p>
+                            <p style="font-size: 0.75rem; color: var(--text-light); margin-top: 0.5rem;">
+                                ${cluster.products.slice(0, 5).join(', ')}${cluster.products.length > 5 ? '...' : ''}
+                            </p>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+
+                document.getElementById('clusterResults').innerHTML = html;
+
+            } catch (error) {
+                console.error('Erro:', error);
+                document.getElementById('clusterResults').innerHTML = `<div class="alert alert-danger">Erro ao clusterizar</div>`;
+            }
+        }
+
+        async function loadElbow() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+
+            try {
+                const response = await fetch(`${API_URL}/api/v1/ml/clustering/optimal-k?start_date=${startDate}&end_date=${endDate}`);
+                const data = await response.json();
+
+                if (!data.success) {
+                    document.getElementById('clusterResults').innerHTML = `<div class="alert alert-warning">${data.message}</div>`;
+                    return;
+                }
+
+                const trace = {
+                    x: data.elbow_data.map(d => d.k),
+                    y: data.elbow_data.map(d => d.inertia),
+                    type: 'scatter',
+                    mode: 'lines+markers',
+                    line: { color: '#D4577B' },
+                };
+
+                const layout = {
+                    title: 'Método do Cotovelo',
+                    xaxis: { title: 'Número de Clusters (k)' },
+                    yaxis: { title: 'Inércia' },
+                    height: 350,
+                };
+
+                Plotly.newPlot('clusterResults', [trace], layout, { responsive: true });
+
+                document.getElementById('clusterResults').innerHTML += `
+                    <div class="alert alert-info" style="margin-top: 1rem;">
+                        Número recomendado de clusters: <strong>${data.recommended_k}</strong>
+                    </div>
+                `;
+
+            } catch (error) {
+                console.error('Erro:', error);
+            }
+        }
+
+        async function loadTrends() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+
+            try {
+                const response = await fetch(`${API_URL}/api/v1/ml/trends/all-products?start_date=${startDate}&end_date=${endDate}`);
+                const data = await response.json();
+
+                if (!data.success) {
+                    document.getElementById('trendResults').innerHTML = `<div class="alert alert-warning">${data.message}</div>`;
+                    return;
+                }
+
+                let html = `
+                    <div class="kpi-cards">
+                        <div class="card">
+                            <h3>Produtos Analisados</h3>
+                            <div class="value">${data.products_analyzed}</div>
+                        </div>
+                        <div class="card">
+                            <h3>Crescendo</h3>
+                            <div class="value" style="color: var(--success);">${data.summary.growing}</div>
+                        </div>
+                        <div class="card">
+                            <h3>Estáveis</h3>
+                            <div class="value">${data.summary.stable}</div>
+                        </div>
+                        <div class="card">
+                            <h3>Decaindo</h3>
+                            <div class="value" style="color: var(--danger);">${data.summary.declining}</div>
+                        </div>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Produto</th>
+                                <th>Tendência</th>
+                                <th>Confiança</th>
+                                <th>Variação</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                for (const [pid, trend] of Object.entries(data.by_product)) {
+                    if (trend.success) {
+                        const color = trend.trend.includes('crescente') ? 'var(--success)' : 
+                                     trend.trend.includes('decrescente') ? 'var(--danger)' : 'var(--text)';
+                        html += `
+                            <tr>
+                                <td>${pid}</td>
+                                <td style="color: ${color}; font-weight: bold;">${trend.trend}</td>
+                                <td>${trend.confidence}</td>
+                                <td>${trend.metrics.variation_percent.toFixed(1)}%</td>
+                            </tr>
+                        `;
+                    }
+                }
+
+                html += '</tbody></table>';
+                document.getElementById('trendResults').innerHTML = html;
+
+            } catch (error) {
+                console.error('Erro:', error);
+                document.getElementById('trendResults').innerHTML = `<div class="alert alert-danger">Erro ao analisar tendências</div>`;
+            }
+        }
+
+        async function loadSeasonality() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            const period = document.getElementById('seasonalityPeriod').value;
+
+            try {
+                const response = await fetch(`${API_URL}/api/v1/ml/seasonality?start_date=${startDate}&end_date=${endDate}&period=${period}`);
+                const data = await response.json();
+
+                if (!data.success) {
+                    document.getElementById('seasonalityResults').innerHTML = `<div class="alert alert-warning">${data.message}</div>`;
+                    return;
+                }
+
+                const periods = Object.keys(data.seasonality);
+                const values = periods.map(p => data.seasonality[p].deviation_from_avg);
+
+                const colors = values.map(v => v >= 0 ? '#22C55E' : '#EF4444');
+
+                const trace = {
+                    x: periods,
+                    y: values,
+                    type: 'bar',
+                    marker: { color: colors },
+                };
+
+                const layout = {
+                    xaxis: { title: period === 'weekly' ? 'Dia da Semana' : period === 'monthly' ? 'Mês' : 'Trimestre' },
+                    yaxis: { title: 'Desvio da Média (%)' },
+                    height: 350,
+                };
+
+                Plotly.newPlot('seasonalityChart', [trace], layout, { responsive: true });
+
+                document.getElementById('seasonalityResults').innerHTML = `
+                    <div class="alert alert-info">
+                        <strong>Pico de vendas:</strong> ${data.peak_period} (+${data.max_deviation.toFixed(1)}%)<br>
+                        <strong>Período mais baixo:</strong> ${data.low_period} (${data.min_deviation.toFixed(1)}%)
+                    </div>
+                `;
+
+            } catch (error) {
+                console.error('Erro:', error);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('applyFilters').addEventListener('click', () => {
+                loadForecast();
+                loadAnomalies();
+                loadClusters();
+                loadTrends();
+                loadSeasonality();
+            });
+
+            document.getElementById('forecastBtn').addEventListener('click', loadForecast);
+            document.getElementById('anomalyBtn').addEventListener('click', loadAnomalies);
+            document.getElementById('clusterBtn').addEventListener('click', loadClusters);
+            document.getElementById('elbowBtn').addEventListener('click', loadElbow);
+            document.getElementById('trendBtn').addEventListener('click', loadTrends);
+            document.getElementById('seasonalityBtn').addEventListener('click', loadSeasonality);
+
+            loadForecast();
+        });
+    </script>
+</body>
+</html>

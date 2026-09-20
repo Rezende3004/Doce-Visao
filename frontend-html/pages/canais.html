@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Canais e Períodos — DoceVisão</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+</head>
+<body>
+    <nav class="sidebar">
+        <div class="logo">🧁 DoceVisão</div>
+        <ul class="menu">
+            <li><a href="../index.html">📊 Visão Geral</a></li>
+            <li><a href="produtos.html">🍰 Produtos</a></li>
+            <li><a href="canais.html" class="active">📅 Canais e Períodos</a></li>
+            <li><a href="producao.html">🏭 Produção</a></li>
+            <li><a href="insights.html">💡 Insights</a></li>
+            <li><a href="importacao.html">📥 Importação</a></li>
+            <li><a href="ml.html">🤖 Análise Inteligente</a></li>
+            <li><a href="ml.html">🤖 Análise Inteligente</a></li>
+            <li><a href="sobre.html">📖 Sobre</a></li>
+        </ul>
+    </nav>
+
+    <main class="content">
+        <header>
+            <h1>Canais e Períodos</h1>
+            <div class="filters">
+                <label>
+                    Data inicial:
+                    <input type="date" id="startDate" value="2025-01-01">
+                </label>
+                <label>
+                    Data final:
+                    <input type="date" id="endDate" value="2025-07-31">
+                </label>
+                <button id="applyFilters" class="btn-primary">Aplicar</button>
+            </div>
+        </header>
+
+        <section class="chart-container">
+            <h2>Vendas por Canal</h2>
+            <div id="channelChart"></div>
+            <table id="channelTable"></table>
+        </section>
+
+        <section class="chart-container">
+            <h2>Desempenho por Dia da Semana</h2>
+            <div id="weekdayChart"></div>
+        </section>
+
+        <section class="chart-container">
+            <h2>Evolução Temporal</h2>
+            <div id="timelineChart"></div>
+        </section>
+    </main>
+
+    <script src="../js/api.js"></script>
+    <script src="../js/charts.js"></script>
+    <script>
+        async function loadChannels() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            const params = { start_date: startDate, end_date: endDate };
+
+            try {
+                const channels = await API.getByChannel(params);
+                if (channels.length > 0) {
+                    createBarChart('channelChart', channels.map(c => c.channel_name), channels.map(c => c.faturamento_cents / 100));
+                    document.getElementById('channelTable').innerHTML = `
+                        <thead><tr><th>Canal</th><th>Pedidos</th><th>Faturamento</th></tr></thead>
+                        <tbody>${channels.map(c => `<tr><td>${c.channel_name}</td><td>${c.num_pedidos}</td><td>${c.faturamento}</td></tr>`).join('')}</tbody>
+                    `;
+                }
+
+                const weekdays = await API.getByWeekday(params);
+                if (weekdays.length > 0) {
+                    createBarChart('weekdayChart', weekdays.map(w => w.weekday), weekdays.map(w => w.faturamento_cents / 100), '', '#8B5CF6');
+                }
+
+                const timeline = await API.getTimeline(params);
+                if (timeline.length > 0) {
+                    createDualAxisChart(
+                        'timelineChart',
+                        timeline.map(p => p.date),
+                        timeline.map(p => p.faturamento_cents / 100),
+                        timeline.map(p => p.num_pedidos),
+                        'Faturamento',
+                        'Pedidos'
+                    );
+                }
+
+            } catch (error) {
+                console.error('Erro:', error);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('applyFilters').addEventListener('click', loadChannels);
+            loadChannels();
+        });
+    </script>
+</body>
+</html>

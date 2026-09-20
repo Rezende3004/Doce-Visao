@@ -1,0 +1,7 @@
+data_venda,id_pedido,produto,categoria,quantidade,valor_unitario,status
+32/13/2025,ERR-1,Bolo,Bolos,1,"10,00",Concluído
+01/02/2025,ERR-2,Brigadeiro,Doces,-5,"5,00",Concluído
+01/02/2025,ERR-3,Trufa,Doces,1,"-10,00",Concluído
+01/02/2025,,Bolo,Bolos,1,"10,00",Concluído
+01/02/2025,ERR-5,Bolo,Bolos,1,abc,Concluído
+01/02/2025,ERR-6,Bolo,Bolos,1,"10,00",Inválido

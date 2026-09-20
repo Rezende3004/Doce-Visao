@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Insights — DoceVisão</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <nav class="sidebar">
+        <div class="logo">🧁 DoceVisão</div>
+        <ul class="menu">
+            <li><a href="../index.html">📊 Visão Geral</a></li>
+            <li><a href="produtos.html">🍰 Produtos</a></li>
+            <li><a href="canais.html">📅 Canais e Períodos</a></li>
+            <li><a href="producao.html">🏭 Produção</a></li>
+            <li><a href="insights.html" class="active">💡 Insights</a></li>
+            <li><a href="importacao.html">📥 Importação</a></li>
+            <li><a href="ml.html">🤖 Análise Inteligente</a></li>
+            <li><a href="ml.html">🤖 Análise Inteligente</a></li>
+            <li><a href="sobre.html">📖 Sobre</a></li>
+        </ul>
+    </nav>
+
+    <main class="content">
+        <header>
+            <h1>Insights</h1>
+            <div class="filters">
+                <label>
+                    Data inicial:
+                    <input type="date" id="startDate" value="2025-01-01">
+                </label>
+                <label>
+                    Data final:
+                    <input type="date" id="endDate" value="2025-07-31">
+                </label>
+                <button id="applyFilters" class="btn-primary">Aplicar</button>
+            </div>
+        </header>
+
+        <p id="periodInfo" style="color: var(--text-light); margin-bottom: 2rem;"></p>
+
+        <div id="insightsContainer"></div>
+    </main>
+
+    <script src="../js/api.js"></script>
+    <script>
+        async function loadInsights() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            const params = { start_date: startDate, end_date: endDate };
+
+            const formatDate = (d) => d.split('-').reverse().join('/');
+            document.getElementById('periodInfo').textContent = 
+                `Período analisado: ${formatDate(startDate)} a ${formatDate(endDate)}`;
+
+            try {
+                const insights = await API.getInsights(params);
+                const container = document.getElementById('insightsContainer');
+
+                if (insights.length === 0) {
+                    container.innerHTML = '<div class="alert alert-info">Nenhum insight disponível para o período selecionado.</div>';
+                    return;
+                }
+
+                const levels = {
+                    atencao: { icon: '⚠️', label: 'Atenção' },
+                    oportunidade: { icon: '💡', label: 'Oportunidade' },
+                    informativo: { icon: 'ℹ️', label: 'Informativo' },
+                };
+
+                let html = '';
+                for (const [levelKey, levelInfo] of Object.entries(levels)) {
+                    const group = insights.filter(i => i.level === levelKey);
+                    if (group.length > 0) {
+                        html += `<h2>${levelInfo.icon} ${levelInfo.label}</h2>`;
+                        html += group.map(ins => `
+                            <div class="insight-card ${ins.level}">
+                                <h4>${ins.title}</h4>
+                                <p>${ins.description}</p>
+                                <p><strong>Evidência:</strong> ${ins.evidence}</p>
+                                <div class="recommendation">💡 ${ins.recommendation}</div>
+                            </div>
+                        `).join('');
+                    }
+                }
+
+                container.innerHTML = html;
+
+            } catch (error) {
+                console.error('Erro:', error);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('applyFilters').addEventListener('click', loadInsights);
+            loadInsights();
+        });
+    </script>
+</body>
+</html>

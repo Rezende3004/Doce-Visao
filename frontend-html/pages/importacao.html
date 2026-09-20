@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Importação — DoceVisão</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <nav class="sidebar">
+        <div class="logo">🧁 DoceVisão</div>
+        <ul class="menu">
+            <li><a href="../index.html">📊 Visão Geral</a></li>
+            <li><a href="produtos.html">🍰 Produtos</a></li>
+            <li><a href="canais.html">📅 Canais e Períodos</a></li>
+            <li><a href="producao.html">🏭 Produção</a></li>
+            <li><a href="insights.html">💡 Insights</a></li>
+            <li><a href="importacao.html" class="active">📥 Importação</a></li>
+            <li><a href="sobre.html">📖 Sobre</a></li>
+        </ul>
+    </nav>
+
+    <main class="content">
+        <header>
+            <h1>Importação de Dados</h1>
+        </header>
+
+        <section class="chart-container">
+            <h2>Importar Vendas</h2>
+            <p>Baixe o modelo: <a href="/api/v1/imports/templates/sales" download>modelo_vendas.csv</a></p>
+            <div class="upload-area">
+                <input type="file" id="salesFile" accept=".csv,.xlsx,.xls">
+                <button id="previewSales" class="btn-secondary" style="margin-top: 1rem;">Prévia</button>
+            </div>
+            <div id="salesPreview"></div>
+            <div id="salesResult"></div>
+        </section>
+
+        <section class="chart-container">
+            <h2>Importar Produção</h2>
+            <p>Baixe o modelo: <a href="/api/v1/imports/templates/production" download>modelo_producao.csv</a></p>
+            <div class="upload-area">
+                <input type="file" id="productionFile" accept=".csv,.xlsx,.xls">
+                <button id="previewProduction" class="btn-secondary" style="margin-top: 1rem;">Prévia</button>
+            </div>
+            <div id="productionPreview"></div>
+            <div id="productionResult"></div>
+        </section>
+
+        <section class="chart-container">
+            <h2>Histórico de Importações</h2>
+            <table id="importsTable"></table>
+        </section>
+    </main>
+
+    <script src="../js/api.js"></script>
+    <script>
+        let salesFileContent = null;
+        let productionFileContent = null;
+
+        document.getElementById('salesFile').addEventListener('change', (e) => {
+            salesFileContent = e.target.files[0];
+        });
+
+        document.getElementById('productionFile').addEventListener('change', (e) => {
+            productionFileContent = e.target.files[0];
+        });
+
+        document.getElementById('previewSales').addEventListener('click', async () => {
+            if (!salesFileContent) return;
+            try {
+                const preview = await API.previewSales(salesFileContent);
+                document.getElementById('salesPreview').innerHTML = `
+                    <div class="alert alert-info">
+                        Total: ${preview.total_rows} linhas | Válidas: ${preview.valid_rows} | Inválidas: ${preview.invalid_rows}
+                    </div>
+                    ${preview.errors.length > 0 ? `
+                        <div class="alert alert-warning">
+                            <strong>Erros encontrados:</strong>
+                            <table><thead><tr><th>Linha</th><th>Campo</th><th>Mensagem</th></tr></thead>
+                            <tbody>${preview.errors.slice(0, 20).map(e => `<tr><td>${e.row}</td><td>${e.field}</td><td>${e.message}</td></tr>`).join('')}</tbody></table>
+                        </div>
+                    ` : ''}
+                    <button id="confirmSales" class="btn-primary" style="margin-top: 1rem;">Confirmar Importação</button>
+                `;
+                document.getElementById('confirmSales').addEventListener('click', async () => {
+                    const result = await API.confirmSales(salesFileContent);
+                    document.getElementById('salesResult').innerHTML = `
+                        <div class="alert alert-success">
+                            Importação concluída! Lote #${result.batch_id}: ${result.accepted_rows} aceitas, ${result.rejected_rows} rejeitadas.
+                        </div>
+                    `;
+                    loadImports();
+                });
+            } catch (error) {
+                document.getElementById('salesPreview').innerHTML = `<div class="alert alert-danger">Erro: ${error.message}</div>`;
+            }
+        });
+
+        document.getElementById('previewProduction').addEventListener('click', async () => {
+            if (!productionFileContent) return;
+            try {
+                const preview = await API.previewProduction(productionFileContent);
+                document.getElementById('productionPreview').innerHTML = `
+                    <div class="alert alert-info">
+                        Total: ${preview.total_rows} linhas | Válidas: ${preview.valid_rows} | Inválidas: ${preview.invalid_rows}
+                    </div>
+                    ${preview.errors.length > 0 ? `
+                        <div class="alert alert-warning">
+                            <strong>Erros encontrados:</strong>
+                            <table><thead><tr><th>Linha</th><th>Campo</th><th>Mensagem</th></tr></thead>
+                            <tbody>${preview.errors.slice(0, 20).map(e => `<tr><td>${e.row}</td><td>${e.field}</td><td>${e.message}</td></tr>`).join('')}</tbody></table>
+                        </div>
+                    ` : ''}
+                    <button id="confirmProduction" class="btn-primary" style="margin-top: 1rem;">Confirmar Importação</button>
+                `;
+                document.getElementById('confirmProduction').addEventListener('click', async () => {
+                    const result = await API.confirmProduction(productionFileContent);
+                    document.getElementById('productionResult').innerHTML = `
+                        <div class="alert alert-success">
+                            Importação concluída! Lote #${result.batch_id}: ${result.accepted_rows} aceitas, ${result.rejected_rows} rejeitadas.
+                        </div>
+                    `;
+                    loadImports();
+                });
+            } catch (error) {
+                document.getElementById('productionPreview').innerHTML = `<div class="alert alert-danger">Erro: ${error.message}</div>`;
+            }
+        });
+
+        async function loadImports() {
+            try {
+                const imports = await API.getImports();
+                document.getElementById('importsTable').innerHTML = `
+                    <thead><tr><th>ID</th><th>Tipo</th><th>Arquivo</th><th>Status</th><th>Aceitas</th><th>Rejeitadas</th><th>Data</th></tr></thead>
+                    <tbody>${imports.map(i => `
+                        <tr>
+                            <td>${i.id}</td>
+                            <td>${i.import_type}</td>
+                            <td>${i.original_filename}</td>
+                            <td>${i.status}</td>
+                            <td>${i.accepted_rows}</td>
+                            <td>${i.rejected_rows}</td>
+                            <td>${new Date(i.created_at).toLocaleDateString('pt-BR')}</td>
+                        </tr>
+                    `).join('')}</tbody>
+                `;
+            } catch (error) {
+                console.error('Erro:', error);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', loadImports);
+    </script>
+</body>
+</html>

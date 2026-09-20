@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sobre os Indicadores — DoceVisão</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <nav class="sidebar">
+        <div class="logo">🧁 DoceVisão</div>
+        <ul class="menu">
+            <li><a href="../index.html">📊 Visão Geral</a></li>
+            <li><a href="produtos.html">🍰 Produtos</a></li>
+            <li><a href="canais.html">📅 Canais e Períodos</a></li>
+            <li><a href="producao.html">🏭 Produção</a></li>
+            <li><a href="insights.html">💡 Insights</a></li>
+            <li><a href="importacao.html">📥 Importação</a></li>
+            <li><a href="ml.html">🤖 Análise Inteligente</a></li>
+            <li><a href="ml.html">🤖 Análise Inteligente</a></li>
+            <li><a href="sobre.html" class="active">📖 Sobre</a></li>
+        </ul>
+    </nav>
+
+    <main class="content">
+        <header>
+            <h1>Sobre os Indicadores</h1>
+        </header>
+
+        <section class="chart-container">
+            <h3>Faturamento</h3>
+            <p><strong>Definição:</strong> Soma do valor total das vendas concluídas no período.</p>
+            <p><strong>Fórmula:</strong> <code>total = quantidade × valor_unitário - desconto</code></p>
+            <p><strong>Utilidade:</strong> Mede o volume de receita gerado.</p>
+            <p><strong>Limitações:</strong> Não considera custos nem devoluções posteriores.</p>
+        </section>
+
+        <section class="chart-container">
+            <h3>Quantidade de Pedidos</h3>
+            <p><strong>Definição:</strong> Contagem de pedidos distintos com status concluído.</p>
+            <p><strong>Utilidade:</strong> Indica o volume de transações.</p>
+            <p><strong>Limitações:</strong> Um pedido pode conter múltiplos itens.</p>
+        </section>
+
+        <section class="chart-container">
+            <h3>Ticket Médio</h3>
+            <p><strong>Definição:</strong> Faturamento dividido pela quantidade de pedidos.</p>
+            <p><strong>Fórmula:</strong> <code>ticket médio = faturamento / pedidos</code></p>
+            <p><strong>Utilidade:</strong> Valor médio gasto por pedido.</p>
+            <p><strong>Limitações:</strong> Se não houver pedidos, retorna zero.</p>
+        </section>
+
+        <section class="chart-container">
+            <h3>Itens Vendidos</h3>
+            <p><strong>Definição:</strong> Soma das quantidades de todas as vendas concluídas.</p>
+            <p><strong>Utilidade:</strong> Volume físico de produtos vendidos.</p>
+        </section>
+
+        <section class="chart-container">
+            <h3>Margem Estimada</h3>
+            <p><strong>Definição:</strong> Diferença entre faturamento e custo total.</p>
+            <p><strong>Fórmula:</strong> <code>margem = faturamento - custo_total</code></p>
+            <p><strong>Utilidade:</strong> Rentabilidade dos produtos.</p>
+            <p><strong>Limitações:</strong> Calculada apenas para registros com custo unitário informado. A cobertura indica quanto dos dados possui custo.</p>
+        </section>
+
+        <section class="chart-container">
+            <h3>Taxa de Desperdício</h3>
+            <p><strong>Definição:</strong> Proporção da produção que foi descartada.</p>
+            <p><strong>Fórmula:</strong> <code>desperdício = descartado / produzido × 100</code></p>
+            <p><strong>Utilidade:</strong> Eficiência da produção.</p>
+            <p><strong>Limitações:</strong> Requer dados de produção importados.</p>
+        </section>
+
+        <section class="chart-container">
+            <h3>Crescimento entre Períodos</h3>
+            <p><strong>Definição:</strong> Comparação do período selecionado com o período anterior de mesma duração.</p>
+            <p><strong>Utilidade:</strong> Tendência de vendas.</p>
+            <p><strong>Limitações:</strong> Se não houver dados suficientes, exibe "dados insuficientes".</p>
+        </section>
+
+        <section class="chart-container">
+            <h3>Cancelamentos</h3>
+            <p>Vendas com status cancelado <strong>não</strong> entram nos KPIs de faturamento, pedidos e itens vendidos.</p>
+            <p><strong>Status reconhecidos:</strong> Concluído, Finalizado, Pago, Cancelado, Pendente.</p>
+        </section>
+    </main>
+</body>
+</html>
