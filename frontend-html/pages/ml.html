@@ -17,8 +17,6 @@
             <li><a href="producao.html">🏭 Produção</a></li>
             <li><a href="insights.html">💡 Insights</a></li>
             <li><a href="importacao.html">📥 Importação</a></li>
-            <li><a href="ml.html">🤖 Análise Inteligente</a></li>
-            <li><a href="ml.html">🤖 Análise Inteligente</a></li>
             <li><a href="ml.html" class="active">🤖 Análise Inteligente</a></li>
             <li><a href="sobre.html">📖 Sobre</a></li>
         </ul>
@@ -26,7 +24,8 @@
 
     <main class="content">
         <header>
-            <h1>🤖 Análise Inteligente</h1>
+            <h1>🤖 Análise Inteligente <span style="background:#f59e0b;color:#000;font-size:0.5em;padding:2px 8px;border-radius:4px;vertical-align:middle;">EXPERIMENTAL</span></h1>
+            <p style="color:#f59e0b;font-weight:bold;">Módulo experimental — resultados podem não ser conclusivos. Use como referência, não como decisão única.</p>
             <div class="filters">
                 <label>
                     Data inicial:
@@ -98,7 +97,7 @@
 
         <section class="chart-container">
             <h2>📊 Classificação de Tendências</h2>
-            <p>Análise de tendência (crescente/decrescente/estável) por produto</p>
+            <p>Variação diária ajustada por dia da semana. Dias sem vendas entram como zero; a conclusão usa intervalo estatístico de 95%.</p>
             <button id="trendBtn" class="btn-secondary" style="margin: 1rem 0;">Analisar Tendências</button>
             <div id="trendResults"></div>
         </section>
@@ -144,7 +143,7 @@
 
                 const trace1 = {
                     x: historical.map(f => f.date),
-                    y: historical.map(f => f.predicted),
+                    y: historical.map(f => f.predicted / 100),
                     type: 'scatter',
                     mode: 'lines',
                     name: 'Histórico',
@@ -153,7 +152,7 @@
 
                 const trace2 = {
                     x: future.map(f => f.date),
-                    y: future.map(f => f.predicted),
+                    y: future.map(f => f.predicted / 100),
                     type: 'scatter',
                     mode: 'lines',
                     name: 'Previsão',
@@ -162,7 +161,7 @@
 
                 const trace3 = {
                     x: [...future.map(f => f.date), ...future.map(f => f.date).reverse()],
-                    y: [...future.map(f => f.upper_bound), ...future.map(f => f.lower_bound).reverse()],
+                    y: [...future.map(f => f.upper_bound / 100), ...future.map(f => f.lower_bound / 100).reverse()],
                     type: 'scatter',
                     mode: 'lines',
                     fill: 'toself',
@@ -380,14 +379,20 @@
                             <h3>Decaindo</h3>
                             <div class="value" style="color: var(--danger);">${data.summary.declining}</div>
                         </div>
+                        <div class="card">
+                            <h3>Inconclusivos</h3>
+                            <div class="value">${data.summary.inconclusive}</div>
+                        </div>
                     </div>
+                    ${data.summary.inconclusive === data.products_analyzed ? '<div class="alert alert-info">Os dados deste período não mostram uma direção de vendas suficientemente clara. As estimativas e os intervalos de cada produto aparecem abaixo.</div>' : ''}
                     <table>
                         <thead>
                             <tr>
                                 <th>Produto</th>
                                 <th>Tendência</th>
-                                <th>Confiança</th>
-                                <th>Variação</th>
+                                <th>Evidência</th>
+                                <th>Média recente × anterior</th>
+                                <th>Análise</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -397,14 +402,21 @@
                     if (trend.success) {
                         const color = trend.trend.includes('crescente') ? 'var(--success)' : 
                                      trend.trend.includes('decrescente') ? 'var(--danger)' : 'var(--text)';
+                        const name = trend.product_name || pid;
+                        const trendDisplay = trend.trend;
+                        const trendColor = trend.confidence === 'baixa' ? 'var(--text-light)' : color;
+                        const variation = trend.metrics.variation_percent;
                         html += `
                             <tr>
-                                <td>${pid}</td>
-                                <td style="color: ${color}; font-weight: bold;">${trend.trend}</td>
+                                <td>${name}</td>
+                                <td style="color: ${trendColor}; font-weight: bold;">${trendDisplay}</td>
                                 <td>${trend.confidence}</td>
-                                <td>${trend.metrics.variation_percent.toFixed(1)}%</td>
+                                <td>${variation === null ? '—' : variation.toFixed(1) + '%'}</td>
+                                <td>${trend.description}<br><small>${trend.metrics.days_with_sales} dias com vendas em ${trend.metrics.data_points} dias; médias de ${trend.metrics.comparison_window_days} dias: ${trend.metrics.previous_avg.toFixed(1)} → ${trend.metrics.recent_avg.toFixed(1)} unidades/dia.</small></td>
                             </tr>
                         `;
+                    } else {
+                        html += `<tr><td>${trend.product_name || pid}</td><td>Dados insuficientes</td><td>—</td><td>—</td><td>${trend.message || 'Sem dados suficientes para análise.'}</td></tr>`;
                     }
                 }
 

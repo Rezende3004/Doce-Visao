@@ -1,4 +1,5 @@
 """Produção e Desperdício."""
+
 from __future__ import annotations
 
 import os
@@ -44,18 +45,22 @@ c3.metric("Descartado", total_discarded)
 c4.metric("Taxa de Desperdício", f"{overall_rate:.1f}%")
 
 st.subheader("Desperdício por Produto")
-fig = go.Figure(go.Bar(
-    x=[w["product_name"] for w in waste],
-    y=[w["discarded"] for w in waste],
-    marker_color="#EF4444",
-    name="Descartado",
-))
-fig.add_trace(go.Bar(
-    x=[w["product_name"] for w in waste],
-    y=[w["sold"] for w in waste],
-    marker_color="#22C55E",
-    name="Vendido",
-))
+fig = go.Figure(
+    go.Bar(
+        x=[w["product_name"] for w in waste],
+        y=[w["discarded"] for w in waste],
+        marker_color="#EF4444",
+        name="Descartado",
+    )
+)
+fig.add_trace(
+    go.Bar(
+        x=[w["product_name"] for w in waste],
+        y=[w["sold"] for w in waste],
+        marker_color="#22C55E",
+        name="Vendido",
+    )
+)
 fig.update_layout(barmode="group", yaxis_title="Quantidade", height=400, xaxis_tickangle=-45)
 st.plotly_chart(fig, use_container_width=True)
 

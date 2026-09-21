@@ -1,4 +1,5 @@
 """Domain services — pure business logic, no I/O."""
+
 from __future__ import annotations
 
 from datetime import date
@@ -31,8 +32,14 @@ def calculate_ticket_medio(faturamento_cents: int, num_pedidos: int) -> int:
 
 
 def calculate_growth(current: float, previous: float) -> float | None:
+    """Calculate growth percentage between two values.
+
+    Returns None when there is no valid comparison:
+    - Both zero → no variation
+    - Previous zero, current > 0 → no base (indicated as None)
+    """
     if previous == 0:
-        return None if current == 0 else float("inf")
+        return None
     return ((current - previous) / previous) * 100
 
 

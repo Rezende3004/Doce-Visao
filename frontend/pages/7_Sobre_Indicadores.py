@@ -1,4 +1,5 @@
 """Sobre os Indicadores — Glossário de KPIs."""
+
 import streamlit as st
 
 st.set_page_config(page_title="Sobre os Indicadores — DoceVisão", page_icon="📖", layout="wide")

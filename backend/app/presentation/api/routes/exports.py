@@ -1,4 +1,5 @@
 """Export routes — CSV download of sales data."""
+
 from __future__ import annotations
 
 import io
@@ -8,26 +9,15 @@ from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 
-from app.application.dto.analytics import DateRange, SalesFilters
 from app.infrastructure.database.models import (
     DimChannelModel,
     DimDateModel,
     DimProductModel,
     FactSaleModel,
 )
-from app.presentation.api.dependencies import get_db
+from app.presentation.api.dependencies import get_db, parse_filters
 
 router = APIRouter()
-
-
-def _build_filters(start_date, end_date, product_id, category, channel_id) -> SalesFilters | None:
-    dr = None
-    if start_date and end_date:
-        from datetime import date as date_type
-        dr = DateRange(start_date=date_type.fromisoformat(start_date), end_date=date_type.fromisoformat(end_date))
-    if not any([dr, product_id, category, channel_id]):
-        return None
-    return SalesFilters(date_range=dr, product_id=product_id, category=category, channel_id=channel_id)
 
 
 @router.get("/sales")
@@ -58,22 +48,24 @@ def export_sales(
         .where(FactSaleModel.status == "completed")
     )
 
-    if start_date and end_date:
-        from datetime import date as date_type
-        query = query.where(
-            DimDateModel.full_date >= date_type.fromisoformat(start_date),
-            DimDateModel.full_date <= date_type.fromisoformat(end_date),
-        )
-    if product_id:
-        query = query.where(FactSaleModel.product_id == product_id)
-    if category:
-        query = query.where(DimProductModel.category == category)
-    if channel_id:
-        query = query.where(FactSaleModel.channel_id == channel_id)
+    # Use centralized filter application
+    if filters := parse_filters(start_date, end_date, product_id, category, channel_id):
+        if filters.date_range:
+            query = query.where(
+                DimDateModel.full_date >= filters.date_range.start_date,
+                DimDateModel.full_date <= filters.date_range.end_date,
+            )
+        if filters.product_id:
+            query = query.where(FactSaleModel.product_id == filters.product_id)
+        if filters.category:
+            query = query.where(DimProductModel.category == filters.category)
+        if filters.channel_id:
+            query = query.where(FactSaleModel.channel_id == filters.channel_id)
 
     rows = db.execute(query).all()
-    df = pd.DataFrame(rows, columns=["data", "pedido", "produto", "categoria", "canal", "quantidade",
-                                      "valor_unitario_cents", "desconto_cents", "total_cents", "status"])
+    df = pd.DataFrame(
+        rows, columns=["data", "pedido", "produto", "categoria", "canal", "quantidade", "valor_unitario_cents", "desconto_cents", "total_cents", "status"]
+    )
     df["valor_unitario"] = df["valor_unitario_cents"] / 100
     df["desconto"] = df["desconto_cents"] / 100
     df["total"] = df["total_cents"] / 100

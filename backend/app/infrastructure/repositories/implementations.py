@@ -1,4 +1,5 @@
 """Repository implementations using SQLAlchemy."""
+
 from __future__ import annotations
 
 from datetime import date, datetime
@@ -40,9 +41,7 @@ class ImportRepository:
         self.session = session
 
     def check_duplicate(self, file_hash: str) -> ImportBatchModel | None:
-        return self.session.scalar(
-            select(ImportBatchModel).where(ImportBatchModel.file_hash == file_hash)
-        )
+        return self.session.scalar(select(ImportBatchModel).where(ImportBatchModel.file_hash == file_hash))
 
     def create_batch(
         self,
@@ -83,18 +82,10 @@ class ImportRepository:
         return self.session.scalar(select(ImportBatchModel).where(ImportBatchModel.id == batch_id))
 
     def list_batches(self, limit: int = 50, offset: int = 0) -> list[ImportBatchModel]:
-        return list(
-            self.session.scalars(
-                select(ImportBatchModel).order_by(ImportBatchModel.created_at.desc()).offset(offset).limit(limit)
-            ).all()
-        )
+        return list(self.session.scalars(select(ImportBatchModel).order_by(ImportBatchModel.created_at.desc()).offset(offset).limit(limit)).all())
 
     def get_errors(self, batch_id: int) -> list[ImportErrorModel]:
-        return list(
-            self.session.scalars(
-                select(ImportErrorModel).where(ImportErrorModel.import_batch_id == batch_id)
-            ).all()
-        )
+        return list(self.session.scalars(select(ImportErrorModel).where(ImportErrorModel.import_batch_id == batch_id)).all())
 
 
 class SalesRepository:
@@ -147,9 +138,7 @@ class SalesRepository:
                 category=filters.category,
                 channel_id=filters.channel_id,
             )
-            prev_q = select(func.coalesce(func.sum(FactSaleModel.total_cents), 0)).where(
-                FactSaleModel.status == "completed"
-            )
+            prev_q = select(func.coalesce(func.sum(FactSaleModel.total_cents), 0)).where(FactSaleModel.status == "completed")
             prev_q = self._apply_filters(prev_q, prev_filters)
             faturamento_anterior = self.session.scalar(prev_q)
             crescimento = calculate_growth(faturamento, faturamento_anterior)
@@ -165,6 +154,7 @@ class SalesRepository:
 
     def _previous_period(self, dr: DateRange) -> DateRange:
         from datetime import timedelta
+
         duration = (dr.end_date - dr.start_date).days + 1
         prev_end = dr.start_date - timedelta(days=1)
         prev_start = prev_end - timedelta(days=duration - 1)
@@ -201,10 +191,7 @@ class SalesRepository:
         )
         query = self._apply_filters(query, filters, skip_date_join=True)
         rows = self.session.execute(query).all()
-        return [
-            WeekdaySales(weekday=r.weekday_name, weekday_number=r.weekday_number, faturamento_cents=r.faturamento, num_pedidos=r.pedidos)
-            for r in rows
-        ]
+        return [WeekdaySales(weekday=r.weekday_name, weekday_number=r.weekday_number, faturamento_cents=r.faturamento, num_pedidos=r.pedidos) for r in rows]
 
     def get_by_channel(self, filters: SalesFilters | None = None) -> list[ChannelSales]:
         query = (
@@ -221,10 +208,7 @@ class SalesRepository:
         )
         query = self._apply_filters(query, filters)
         rows = self.session.execute(query).all()
-        return [
-            ChannelSales(channel_id=r.id, channel_name=r.name, faturamento_cents=r.faturamento, num_pedidos=r.pedidos)
-            for r in rows
-        ]
+        return [ChannelSales(channel_id=r.id, channel_name=r.name, faturamento_cents=r.faturamento, num_pedidos=r.pedidos) for r in rows]
 
 
 class ProductRepository:
@@ -334,29 +318,54 @@ class ProductRepository:
         ]
 
     def get_margin_info(self, filters: SalesFilters | None = None) -> MarginInfo:
-        query = select(
+        # Step 1: total revenue from ALL completed sales
+        total_sales_query = select(
             func.coalesce(func.sum(FactSaleModel.total_cents), 0).label("faturamento"),
-            func.coalesce(func.sum(FactSaleModel.unit_cost_cents * FactSaleModel.quantity), 0).label("custo"),
             func.count(FactSaleModel.id).label("total"),
-            func.count(FactSaleModel.unit_cost_cents).label("com_custo"),
-        ).where(FactSaleModel.status == "completed", FactSaleModel.unit_cost_cents.isnot(None))
+        ).where(FactSaleModel.status == "completed")
+
+        # Step 2: cost + revenue subset from sales that have unit_cost_cents
+        cost_query = select(
+            func.coalesce(func.sum(FactSaleModel.unit_cost_cents * FactSaleModel.quantity), 0).label("custo"),
+            func.count(FactSaleModel.id).label("com_custo"),
+        ).where(
+            FactSaleModel.status == "completed",
+            FactSaleModel.unit_cost_cents.isnot(None),
+        )
 
         if filters:
             if filters.date_range:
-                query = query.join(DimDateModel).where(
+                base_q = total_sales_query.join(DimDateModel).where(
                     DimDateModel.full_date >= filters.date_range.start_date,
                     DimDateModel.full_date <= filters.date_range.end_date,
                 )
-            if filters.product_id:
-                query = query.where(FactSaleModel.product_id == filters.product_id)
-            if filters.category:
-                query = query.join(DimProductModel).where(DimProductModel.category == filters.category)
+                cost_base = cost_query.join(DimDateModel).where(
+                    DimDateModel.full_date >= filters.date_range.start_date,
+                    DimDateModel.full_date <= filters.date_range.end_date,
+                )
+            else:
+                base_q = total_sales_query
+                cost_base = cost_query
 
-        row = self.session.execute(query).one()
-        faturamento = row.faturamento
-        custo = row.custo
+            if filters.product_id:
+                base_q = base_q.where(FactSaleModel.product_id == filters.product_id)
+                cost_base = cost_base.where(FactSaleModel.product_id == filters.product_id)
+            if filters.category:
+                cat_filter = base_q.join(DimProductModel).where(DimProductModel.category == filters.category)
+                cost_base = cost_base.join(DimProductModel).where(DimProductModel.category == filters.category)
+                base_q = cat_filter
+
+            row_total = self.session.execute(base_q).one()
+            row_cost = self.session.execute(cost_base).one()
+        else:
+            row_total = self.session.execute(total_sales_query).one()
+            row_cost = self.session.execute(cost_query).one()
+
+        faturamento = row_total.faturamento
+        custo = row_cost.custo
         margem, percentual = calculate_margin(faturamento, custo)
-        coverage = (row.com_custo / row.total * 100) if row.total > 0 else 0.0
+        # cobertura = % of completed sales that have cost data
+        coverage = (row_cost.com_custo / row_total.total * 100) if row_total.total > 0 else 0.0
         return MarginInfo(
             faturamento_cents=faturamento,
             custo_total_cents=custo,
@@ -411,9 +420,7 @@ class DimensionRepository:
 
     def get_or_create_product(self, name: str, category: str) -> DimProductModel:
         normalized = name.strip().lower()
-        product = self.session.scalar(
-            select(DimProductModel).where(DimProductModel.normalized_name == normalized)
-        )
+        product = self.session.scalar(select(DimProductModel).where(DimProductModel.normalized_name == normalized))
         if product is None:
             product = DimProductModel(name=name.strip(), normalized_name=normalized, category=category.strip())
             self.session.add(product)
@@ -424,12 +431,27 @@ class DimensionRepository:
         dm = self.session.scalar(select(DimDateModel).where(DimDateModel.full_date == d))
         if dm is None:
             month_names = [
-                "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
-                "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+                "Janeiro",
+                "Fevereiro",
+                "Março",
+                "Abril",
+                "Maio",
+                "Junho",
+                "Julho",
+                "Agosto",
+                "Setembro",
+                "Outubro",
+                "Novembro",
+                "Dezembro",
             ]
             weekday_names = [
-                "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira",
-                "Sexta-feira", "Sábado", "Domingo",
+                "Segunda-feira",
+                "Terça-feira",
+                "Quarta-feira",
+                "Quinta-feira",
+                "Sexta-feira",
+                "Sábado",
+                "Domingo",
             ]
             dm = DimDateModel(
                 full_date=d,
@@ -448,9 +470,7 @@ class DimensionRepository:
 
     def get_or_create_channel(self, name: str) -> DimChannelModel:
         normalized = name.strip().lower()
-        channel = self.session.scalar(
-            select(DimChannelModel).where(DimChannelModel.normalized_name == normalized)
-        )
+        channel = self.session.scalar(select(DimChannelModel).where(DimChannelModel.normalized_name == normalized))
         if channel is None:
             channel = DimChannelModel(name=name.strip(), normalized_name=normalized)
             self.session.add(channel)

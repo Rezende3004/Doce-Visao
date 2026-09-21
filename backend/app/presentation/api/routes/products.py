@@ -1,11 +1,11 @@
 """Product routes — ranking, category performance, margin, filters."""
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query
 
-from app.application.dto.analytics import DateRange, SalesFilters
 from app.infrastructure.repositories.implementations import DimensionRepository, ProductRepository
-from app.presentation.api.dependencies import get_dim_repo, get_product_repo
+from app.presentation.api.dependencies import get_dim_repo, get_product_repo, parse_filters
 from app.presentation.api.schemas.schemas import (
     CategoryPerformanceResponse,
     FilterOptionsResponse,
@@ -20,16 +20,6 @@ def _fmt(cents: int) -> str:
     return f"R$ {cents / 100:.2f}".replace(".", ",")
 
 
-def _build_filters(start_date, end_date, product_id, category, channel_id) -> SalesFilters | None:
-    dr = None
-    if start_date and end_date:
-        from datetime import date as date_type
-        dr = DateRange(start_date=date_type.fromisoformat(start_date), end_date=date_type.fromisoformat(end_date))
-    if not any([dr, product_id, category, channel_id]):
-        return None
-    return SalesFilters(date_range=dr, product_id=product_id, category=category, channel_id=channel_id)
-
-
 @router.get("/ranking", response_model=list[ProductRankingResponse])
 def get_ranking(
     sort_by: str = Query("quantity", pattern="^(quantity|revenue)$"),
@@ -41,7 +31,7 @@ def get_ranking(
     channel_id: int | None = Query(None),
     product_repo: ProductRepository = Depends(get_product_repo),
 ):
-    filters = _build_filters(start_date, end_date, product_id, category, channel_id)
+    filters = parse_filters(start_date, end_date, product_id, category, channel_id)
     if sort_by == "revenue":
         data = product_repo.get_ranking_by_revenue(filters, limit)
     else:
@@ -68,7 +58,7 @@ def get_category_performance(
     channel_id: int | None = Query(None),
     product_repo: ProductRepository = Depends(get_product_repo),
 ):
-    filters = _build_filters(start_date, end_date, product_id, category, channel_id)
+    filters = parse_filters(start_date, end_date, product_id, category, channel_id)
     data = product_repo.get_category_performance(filters)
     return [
         CategoryPerformanceResponse(
@@ -91,7 +81,7 @@ def get_margin(
     channel_id: int | None = Query(None),
     product_repo: ProductRepository = Depends(get_product_repo),
 ):
-    filters = _build_filters(start_date, end_date, product_id, category, channel_id)
+    filters = parse_filters(start_date, end_date, product_id, category, channel_id)
     m = product_repo.get_margin_info(filters)
     return MarginResponse(
         faturamento=_fmt(m.faturamento_cents),

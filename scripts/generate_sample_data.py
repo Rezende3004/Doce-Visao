@@ -10,18 +10,18 @@ SEED = 42
 OUTPUT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "sample_data")
 
 PRODUCTS = [
-    ("Bolo de Chocolate", "Bolos"),
-    ("Bolo de Cenoura", "Bolos"),
-    ("Bolo Red Velvet", "Bolos"),
-    ("Brigadeiro", "Doces"),
-    ("Brigadeiro Gourmet", "Doces"),
-    ("Trufa de Maracujá", "Doces"),
-    ("Trufa de Morango", "Doces"),
-    ("Coxinha", "Salgados"),
-    ("Empada de Frango", "Salgados"),
-    ("Pão de Queijo", "Salgados"),
-    ("Torta de Limão", "Tortas"),
-    ("Torta Holandesa", "Tortas"),
+    ("Cocada Branca", "Doces de Coco"),
+    ("Cocada Queimada", "Doces de Coco"),
+    ("Doce Sírio de Amido", "Doces de Amido"),
+    ("Pau de Mamão", "Doces de Frutas"),
+    ("Doce de Mamão Verde", "Doces de Frutas"),
+    ("Goiabada", "Doces de Frutas"),
+    ("Bananada", "Doces de Frutas"),
+    ("Doce de Abóbora", "Doces de Vegetais"),
+    ("Paçoca de Amendoim", "Doces de Oleaginosas"),
+    ("Pé de Moleque", "Doces de Oleaginosas"),
+    ("Doce de Caju", "Doces de Frutas"),
+    ("Doce de Buriti", "Doces de Frutas"),
 ]
 
 CHANNELS = ["Balcão", "WhatsApp", "iFood", "Encomenda"]
@@ -52,7 +52,7 @@ def generate_sales():
             order_counter += 1
             num_items = random.randint(1, 4)
             items = random.sample(PRODUCTS, min(num_items, len(PRODUCTS)))
-            for pos, (product, category) in enumerate(items, 1):
+            for product, category in items:
                 base_price = random.randint(500, 3500)
                 qty = random.randint(1, 5)
                 discount = random.choice([0, 0, 0, random.randint(50, 300)])
@@ -79,7 +79,7 @@ def generate_sales():
 
     path = os.path.join(OUTPUT_DIR, "vendas_sinteticas.csv")
     with open(path, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
+        writer = csv.DictWriter(f, fieldnames=list(rows[0].keys()), lineterminator="\n")
         writer.writeheader()
         writer.writerows(rows)
     print(f"Generated {len(rows)} sales rows -> {path}")
@@ -114,7 +114,7 @@ def generate_production():
 
     path = os.path.join(OUTPUT_DIR, "producao_sintetica.csv")
     with open(path, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
+        writer = csv.DictWriter(f, fieldnames=list(rows[0].keys()), lineterminator="\n")
         writer.writeheader()
         writer.writerows(rows)
     print(f"Generated {len(rows)} production rows -> {path}")
@@ -123,22 +123,22 @@ def generate_production():
 def generate_invalid():
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     rows = [
-        {"data_venda": "32/13/2025", "id_pedido": "ERR-1", "produto": "Bolo", "categoria": "Bolos",
+        {"data_venda": "32/13/2025", "id_pedido": "ERR-1", "produto": "Cocada Branca", "categoria": "Doces de Coco",
          "quantidade": "1", "valor_unitario": "10,00", "status": "Concluído"},
-        {"data_venda": "01/02/2025", "id_pedido": "ERR-2", "produto": "Brigadeiro", "categoria": "Doces",
+        {"data_venda": "01/02/2025", "id_pedido": "ERR-2", "produto": "Pau de Mamão", "categoria": "Doces de Frutas",
          "quantidade": "-5", "valor_unitario": "5,00", "status": "Concluído"},
-        {"data_venda": "01/02/2025", "id_pedido": "ERR-3", "produto": "Trufa", "categoria": "Doces",
+        {"data_venda": "01/02/2025", "id_pedido": "ERR-3", "produto": "Doce Sírio de Amido", "categoria": "Doces de Amido",
          "quantidade": "1", "valor_unitario": "-10,00", "status": "Concluído"},
-        {"data_venda": "01/02/2025", "id_pedido": "", "produto": "Bolo", "categoria": "Bolos",
+        {"data_venda": "01/02/2025", "id_pedido": "", "produto": "Cocada Branca", "categoria": "Doces de Coco",
          "quantidade": "1", "valor_unitario": "10,00", "status": "Concluído"},
-        {"data_venda": "01/02/2025", "id_pedido": "ERR-5", "produto": "Bolo", "categoria": "Bolos",
+        {"data_venda": "01/02/2025", "id_pedido": "ERR-5", "produto": "Cocada Branca", "categoria": "Doces de Coco",
          "quantidade": "1", "valor_unitario": "abc", "status": "Concluído"},
-        {"data_venda": "01/02/2025", "id_pedido": "ERR-6", "produto": "Bolo", "categoria": "Bolos",
+        {"data_venda": "01/02/2025", "id_pedido": "ERR-6", "produto": "Cocada Branca", "categoria": "Doces de Coco",
          "quantidade": "1", "valor_unitario": "10,00", "status": "Inválido"},
     ]
     path = os.path.join(OUTPUT_DIR, "vendas_com_erros.csv")
     with open(path, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
+        writer = csv.DictWriter(f, fieldnames=list(rows[0].keys()), lineterminator="\n")
         writer.writeheader()
         writer.writerows(rows)
     print(f"Generated {len(rows)} invalid rows -> {path}")

@@ -31,7 +31,8 @@ O DoceVisao resolve esses problemas centralizando dados de vendas e producao em 
 - **Insights automaticos** — Geracao de analises narrativas baseadas em regras deterministicas (sem LLM), com recomendacoes acionaveis.
 - **Exportacao de dados** — Download de vendas filtradas em formato CSV.
 - **Modelos de importacao** — Templates CSV prontos para download com as colunas esperadas.
-- **Dados sinteticos** — Gerador de dados de demonstracao para testes e apresentacoes.
+- **Dados sinteticos** — Gerador de dados vegetais de demonstracao para testes e apresentacoes.
+- **Analise Inteligente** — Classificacao de tendencias com ajuste para dia da semana e indicacao de resultados inconclusivos na interface HTML.
 
 ## Arquitetura
 
@@ -78,14 +79,15 @@ Para detalhes completos, consulte [docs/architecture.md](docs/architecture.md).
 A forma mais simples de executar o projeto:
 
 ```bash
-# Subir todos os servicos
+# Subir API e Streamlit
 docker compose up --build -d
 
-# Ou via Makefile
-make docker-up
+# Incluir tambem a interface HTML com Analise Inteligente
+docker compose --profile html up --build -d
 ```
 
-O backend ficara disponivel em `http://localhost:8000` e o frontend em `http://localhost:8501`.
+A API ficara em `http://localhost:8001`, o Streamlit em `http://localhost:8501`
+e a interface HTML opcional em `http://localhost`.
 
 ```bash
 # Parar os servicos
@@ -100,8 +102,8 @@ make docker-down
 ### 1. Clone o repositorio
 
 ```bash
-git clone <url-do-repositorio>
-cd PI-DoceriaCatarina
+git clone https://github.com/Rezende3004/Doce-Visao.git
+cd Doce-Visao
 ```
 
 ### 2. Crie e ative o ambiente virtual
@@ -208,10 +210,29 @@ python scripts/generate_sample_data.py
 make seed
 ```
 
-Isso gera tres arquivos em `sample_data/`:
-- `vendas_sinteticas.csv` — ~2.000 registros de vendas (jan-jul/2025)
+Isso gera tres arquivos sinteticos locais em `sample_data/`. Eles nao sao
+versionados; execute o gerador antes da importacao:
+- `vendas_sinteticas.csv` — registros de vendas de doces vegetais (jan-jul/2025)
 - `producao_sintetica.csv` — registros diarios de producao
 - `vendas_com_erros.csv` — arquivo com erros para testar validacao
+
+Com a API Docker em execucao, use `python scripts/import_sample_data.py` para
+carregar os dados gerados no banco do container. A importacao pela interface
+tambem esta disponivel.
+
+O catalogo de produtos permitidos fica em `backend/app/domain/value_objects/plant_sweets.py`.
+As importacoes de vendas e producao rejeitam nomes ou categorias fora desse catalogo.
+Os exemplos incluem cocada, doce sirio de amido e pau de mamao. O catalogo
+representa receitas vegetais; a composicao real dos produtos precisa seguir
+essas receitas para manter a mesma restricao.
+
+Para substituir o banco SQLite local pelos dados de demonstracao vegetais:
+
+```bash
+PYTHONPATH=backend python scripts/rebuild_demo_database.py
+```
+
+O script cria um backup `docevisao.backup_*.db` antes de substituir os dados.
 
 ### Importacao via interface
 
@@ -286,7 +307,7 @@ PI-DoceriaCatarina/
 │   └── Dockerfile
 ├── scripts/
 │   └── generate_sample_data.py     # Gerador de dados sinteticos
-├── sample_data/                    # Dados gerados (gitignored)
+├── sample_data/                    # Dados gerados localmente (gitignored)
 ├── docs/                           # Documentacao
 │   ├── architecture.md
 │   ├── requirements.md
@@ -340,4 +361,4 @@ Projeto academico desenvolvido para fins de extensao universitaria.
 
 ## Contato
 
-Projeto Integrador — Universidade [inserir nome da instituicao]
+Projeto Integrador — Pontifícia Universidade Católica de Goiás

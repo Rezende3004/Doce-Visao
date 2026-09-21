@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Script para importar dados sintéticos automaticamente."""
-import sys
+import os
 from pathlib import Path
 
 import httpx
 
-API_URL = "http://localhost:8002"
+API_URL = os.environ.get("DOCEVISAO_API_URL", "http://localhost:8001")
 SAMPLE_DATA_DIR = Path(__file__).parent.parent / "sample_data"
 
 

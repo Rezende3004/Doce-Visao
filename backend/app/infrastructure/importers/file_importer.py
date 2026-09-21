@@ -1,4 +1,5 @@
 """File import logic — CSV/Excel parsing, validation, and persistence."""
+
 from __future__ import annotations
 
 import hashlib
@@ -11,6 +12,7 @@ import pandas as pd
 from app.application.dto.imports import ImportErrorRow, ImportPreview, ImportResult
 from app.domain.exceptions.errors import DuplicateImportError
 from app.domain.services.calculations import calculate_total_cents, is_valid_sale_date
+from app.domain.value_objects.plant_sweets import validate_plant_sweet
 from app.domain.value_objects.sale_status import normalize_status
 from app.infrastructure.database.models import FactProductionModel, FactSaleModel
 from app.infrastructure.repositories.implementations import DimensionRepository, ImportRepository
@@ -21,21 +23,64 @@ def compute_file_hash(content: bytes) -> str:
 
 
 def _detect_separator(content: str) -> str:
-    sample = content[:4096]
-    if ";" in sample and "," not in sample:
+    """Detect CSV separator using csv.Sniffer for robustness.
+
+    Uses header analysis first (fast), falls back to Sniffer.
+    Handles semicolon-delimited files even when values contain commas.
+    """
+    import csv
+
+    lines = content.splitlines()[:5]
+    # Try csv.Sniffer on header line + first data row
+    try:
+        dialect = csv.Sniffer().sniff("\n".join(lines[:2]), ["\t;", ""])
+        if dialect.delimiter in (";", ","):
+            return dialect.delimiter
+    except csv.Error:
+        pass
+
+    # Fallback: analyze header row heuristic
+    header = lines[0] if lines else ""
+    # Count semicolons vs commas in header
+    s_count = header.count(";")
+    c_count = header.count(",")
+    if s_count > 0 and s_count >= c_count:
         return ";"
+    if c_count > 0 and c_count >= s_count:
+        return ","
     return ","
 
 
 def _parse_brl_money(value) -> int:
-    if pd.isna(value) or value is None:
+    """Parse Brazilian currency string to cents using integer arithmetic.
+
+    Accepts: 10 | 10,00 | 10.00 | R$ 10,00 | 1.234,56
+    Returns 0 for empty/null values (for optional fields).
+    Raises ValueError on invalid formats.
+    """
+    if pd.isna(value) or not str(value).strip():
         return 0
-    s = str(value).strip().replace("R$", "").replace(" ", "")
-    s = s.replace(".", "").replace(",", ".")
-    try:
-        return int(round(float(s) * 100))
-    except (ValueError, TypeError):
+    s = str(value).strip().replace("R$", "").strip()
+    if not s:
+        return 0
+
+    # Validate format: only digits, dots, commas allowed
+    if not re.fullmatch(r"[.\d,]+", s):
         raise ValueError(f"Valor monetário inválido: {value}")
+
+    # Brazilian number parsing (no float involved)
+    if "," in s:
+        integer_part, decimal_part = s.rsplit(",", 1)
+        integer_part = integer_part.replace(".", "").strip()
+        decimal_part = decimal_part.strip()[:2].ljust(2, "0")
+        total_cents_str = f"{integer_part}{decimal_part}"
+    else:
+        total_cents_str = s.replace(".", "").strip()
+
+    if not total_cents_str.isdigit():
+        raise ValueError(f"Valor monetário inválido: {value}")
+
+    return int(total_cents_str)
 
 
 def _parse_date(value) -> date:
@@ -91,7 +136,7 @@ def read_upload(content: bytes, filename: str) -> pd.DataFrame:
         text = content.decode("utf-8-sig")
         sep = _detect_separator(text)
         return pd.read_csv(io.StringIO(text), sep=sep, dtype=str, keep_default_na=False)
-    elif lower.endswith((".xlsx", ".xls")):
+    elif lower.endswith(".xlsx"):
         return pd.read_excel(io.BytesIO(content), dtype=str, keep_default_na=False)
     else:
         raise ValueError(f"Formato não suportado: {filename}")
@@ -138,6 +183,10 @@ def _validate_sales_row(row: pd.Series, row_num: int) -> list[dict]:
 
     if not errs:
         try:
+            validate_plant_sweet(str(row["produto"]), str(row["categoria"]))
+        except ValueError as e:
+            errs.append({"row": row_num, "field": "produto", "message": str(e)})
+        try:
             _parse_date(row["data_venda"])
         except ValueError as e:
             errs.append({"row": row_num, "field": "data_venda", "message": str(e)})
@@ -176,15 +225,21 @@ def confirm_sales_import(
         for idx, (_, row) in enumerate(df.iterrows()):
             row_num = idx + 2
             try:
+                validate_plant_sweet(str(row["produto"]), str(row["categoria"]))
                 d = _parse_date(row["data_venda"])
                 qty = _parse_int(row["quantidade"], "quantidade")
                 unit_price = _parse_brl_money(row["valor_unitario"])
-                discount = _parse_brl_money(row.get("desconto", 0)) if pd.notna(row.get("desconto")) else 0
-                cost = _parse_brl_money(row["custo_unitario"]) if pd.notna(row.get("custo_unitario")) and str(row.get("custo_unitario", "")).strip() else None
+                # Optional fields with safe defaults:
+                # desconto vazio → zero; custo vazio → nulo
+                raw_discount = str(row.get("desconto", "")).strip()
+                discount = _parse_brl_money(raw_discount) if raw_discount else 0
+                raw_cost = str(row.get("custo_unitario", "")).strip()
+                cost = _parse_brl_money(raw_cost) if raw_cost else None
                 status = normalize_status(str(row["status"]))
                 product = dim_repo.get_or_create_product(str(row["produto"]), str(row["categoria"]))
                 date_dim = dim_repo.get_or_create_date(d)
-                channel = dim_repo.get_or_create_channel(str(row["canal"])) if pd.notna(row.get("canal")) and str(row.get("canal", "")).strip() else None
+                raw_channel = str(row.get("canal", "")).strip()
+                channel = dim_repo.get_or_create_channel(raw_channel) if raw_channel else None
 
                 item_id = str(row.get("id_item", "")).strip()
                 if not item_id:
@@ -198,7 +253,7 @@ def confirm_sales_import(
                     product_id=product.id,
                     date_id=date_dim.id,
                     channel_id=channel.id if channel else None,
-                    payment_method=str(row["forma_pagamento"]).strip() if pd.notna(row.get("forma_pagamento")) else None,
+                    payment_method=str(row.get("forma_pagamento", "")).strip() or None,
                     quantity=qty,
                     unit_price_cents=unit_price,
                     discount_cents=discount,
@@ -273,6 +328,10 @@ def _validate_production_row(row: pd.Series, row_num: int) -> list[dict]:
             errs.append({"row": row_num, "field": field, "message": f"Campo obrigatório '{field}' ausente"})
     if not errs:
         try:
+            validate_plant_sweet(str(row["produto"]), str(row["categoria"]))
+        except ValueError as e:
+            errs.append({"row": row_num, "field": "produto", "message": str(e)})
+        try:
             _parse_date(row["data"])
         except ValueError as e:
             errs.append({"row": row_num, "field": "data", "message": str(e)})
@@ -304,6 +363,7 @@ def confirm_production_import(
         for idx, (_, row) in enumerate(df.iterrows()):
             row_num = idx + 2
             try:
+                validate_plant_sweet(str(row["produto"]), str(row["categoria"]))
                 d = _parse_date(row["data"])
                 produced = _parse_int(row["quantidade_produzida"], "quantidade_produzida")
                 sold = _parse_int(row["quantidade_vendida"], "quantidade_vendida")

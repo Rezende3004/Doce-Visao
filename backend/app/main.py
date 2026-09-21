@@ -57,6 +57,7 @@ def health_check():
 def get_filter_options():
     from app.infrastructure.database.connection import get_session
     from app.infrastructure.repositories.implementations import DimensionRepository
+
     session = get_session()
     try:
         repo = DimensionRepository(session)

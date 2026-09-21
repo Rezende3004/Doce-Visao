@@ -1,4 +1,5 @@
 """Unit tests for domain calculations."""
+
 from __future__ import annotations
 
 from datetime import date
@@ -54,7 +55,7 @@ class TestCalculations:
         assert result == 50.0
 
     def test_calculate_growth_zero_previous(self):
-        assert calculate_growth(100, 0) == float("inf")
+        assert calculate_growth(100, 0) is None
 
     def test_calculate_growth_both_zero(self):
         assert calculate_growth(0, 0) is None
@@ -112,3 +113,88 @@ class TestSaleStatus:
     def test_normalize_status_invalid(self):
         with pytest.raises(InvalidSaleStatusError):
             normalize_status("Inválido")
+
+
+class TestDomainEntities:
+    """Test domain entity dataclasses."""
+
+    def test_product_entity(self):
+        from app.domain.entities.models import Product
+
+        p = Product(id=1, name="Bolo", normalized_name="bolo", category="Bolos")
+        assert p.id == 1 and p.name == "Bolo" and p.category == "Bolos"
+
+    def test_sale_record_entity(self):
+        from app.domain.entities.models import SaleRecord
+
+        s = SaleRecord(
+            id=1,
+            external_order_id="PED-001",
+            external_item_id="",
+            product_id=1,
+            date_id=1,
+            channel_id=None,
+            payment_method=None,
+            quantity=2,
+            unit_price_cents=1000,
+            discount_cents=0,
+            unit_cost_cents=500,
+            total_cents=1500,
+            status="Concluído",
+            import_batch_id=1,
+        )
+        assert s.quantity == 2 and s.total_cents == 1500
+
+    def test_production_record_entity(self):
+        from app.domain.entities.models import ProductionRecord
+
+        r = ProductionRecord(
+            id=1,
+            product_id=1,
+            date_id=1,
+            produced_quantity=50,
+            sold_quantity=40,
+            discarded_quantity=5,
+            discard_reason=None,
+            import_batch_id=1,
+        )
+        assert r.produced_quantity == 50 and r.discarded_quantity == 5
+
+    def test_channel_entity(self):
+        from app.domain.entities.models import Channel
+
+        c = Channel(id=1, name="Balcao", normalized_name="balcao")
+        assert c.id == 1
+
+    def test_import_batch_entity(self):
+        from datetime import datetime
+
+        from app.domain.entities.models import ImportBatch
+
+        b = ImportBatch(
+            id=1,
+            import_type="sales",
+            original_filename="vendas.csv",
+            file_hash="abc123",
+            status="completed",
+            total_rows=100,
+            accepted_rows=98,
+            rejected_rows=2,
+            error_message=None,
+            created_at=datetime.now(),
+            completed_at=datetime.now(),
+        )
+        assert b.import_type == "sales"
+
+    def test_import_error_detail_entity(self):
+        from app.domain.entities.models import ImportErrorDetail
+
+        e = ImportErrorDetail(
+            id=1,
+            import_batch_id=1,
+            row_number=5,
+            field_name="data_venda",
+            error_message="Data inválida",
+            raw_data="erroneo|data",
+        )
+        assert e.row_number == 5

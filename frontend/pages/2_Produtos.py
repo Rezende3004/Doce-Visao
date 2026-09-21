@@ -1,4 +1,5 @@
 """Produtos — Rankings, categorias e margem."""
+
 from __future__ import annotations
 
 import os
@@ -27,12 +28,14 @@ st.subheader("Ranking por Quantidade Vendida")
 try:
     ranking_qty = get_ranking(sort_by="quantity", limit=15, start_date=sd, end_date=ed)
     if ranking_qty:
-        fig = go.Figure(go.Bar(
-            x=[p["product_name"] for p in ranking_qty],
-            y=[p["quantity"] for p in ranking_qty],
-            marker_color="#D4577B",
-            orientation="v",
-        ))
+        fig = go.Figure(
+            go.Bar(
+                x=[p["product_name"] for p in ranking_qty],
+                y=[p["quantity"] for p in ranking_qty],
+                marker_color="#D4577B",
+                orientation="v",
+            )
+        )
         fig.update_layout(yaxis_title="Quantidade", height=350, xaxis_tickangle=-45)
         st.plotly_chart(fig, use_container_width=True)
         st.dataframe(ranking_qty, use_container_width=True, hide_index=True)
@@ -45,11 +48,13 @@ st.subheader("Ranking por Faturamento")
 try:
     ranking_rev = get_ranking(sort_by="revenue", limit=15, start_date=sd, end_date=ed)
     if ranking_rev:
-        fig2 = go.Figure(go.Bar(
-            x=[p["product_name"] for p in ranking_rev],
-            y=[p["faturamento_cents"] / 100 for p in ranking_rev],
-            marker_color="#8B5CF6",
-        ))
+        fig2 = go.Figure(
+            go.Bar(
+                x=[p["product_name"] for p in ranking_rev],
+                y=[p["faturamento_cents"] / 100 for p in ranking_rev],
+                marker_color="#8B5CF6",
+            )
+        )
         fig2.update_layout(yaxis_title="Faturamento (R$)", height=350, xaxis_tickangle=-45)
         st.plotly_chart(fig2, use_container_width=True)
     else:
@@ -61,11 +66,13 @@ st.subheader("Desempenho por Categoria")
 try:
     cats = get_category_performance(start_date=sd, end_date=ed)
     if cats:
-        fig3 = go.Figure(go.Bar(
-            x=[c["category"] for c in cats],
-            y=[c["faturamento_cents"] / 100 for c in cats],
-            marker_color="#F59E0B",
-        ))
+        fig3 = go.Figure(
+            go.Bar(
+                x=[c["category"] for c in cats],
+                y=[c["faturamento_cents"] / 100 for c in cats],
+                marker_color="#F59E0B",
+            )
+        )
         fig3.update_layout(yaxis_title="Faturamento (R$)", height=300)
         st.plotly_chart(fig3, use_container_width=True)
         st.dataframe(cats, use_container_width=True, hide_index=True)

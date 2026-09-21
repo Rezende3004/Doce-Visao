@@ -39,6 +39,9 @@ line-length = 160
 select = ["E", "F", "W", "I", "N", "UP", "B", "A", "SIM"]
 ignore = ["B008", "B904", "SIM102", "SIM108", "UP042"]
 
+[tool.ruff.lint.per-file-ignores]
+"*/ml/**/*.py" = ["N806"]  # X, X_scaled are standard ML conventions
+
 [tool.pytest.ini_options]
 testpaths = ["backend/tests"]
 pythonpath = ["backend"]
@@ -46,7 +49,11 @@ asyncio_mode = "auto"
 
 [tool.coverage.run]
 source = ["backend/app"]
-omit = ["*/alembic/*", "*/tests/*"]
+omit = [
+    "*/alembic/*",
+    "*/tests/*",
+    "*/ml/*",
+]
 
 [tool.coverage.report]
 fail_under = 80

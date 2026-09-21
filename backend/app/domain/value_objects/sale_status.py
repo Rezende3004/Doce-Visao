@@ -1,4 +1,5 @@
 """Sale status normalization."""
+
 from __future__ import annotations
 
 from enum import Enum

@@ -1,4 +1,5 @@
 """Demand forecasting using Prophet for time series with seasonality."""
+
 from __future__ import annotations
 
 import logging
@@ -16,12 +17,12 @@ def forecast_demand(
 ) -> dict:
     """
     Forecast future demand based on historical sales data.
-    
+
     Args:
         timeline_data: List of dicts with 'date' and 'faturamento_cents' or 'num_pedidos'
         days_to_forecast: Number of days to forecast into the future
         include_history: Whether to include historical data in the response
-    
+
     Returns:
         Dict with forecast data and metrics
     """
@@ -51,13 +52,15 @@ def forecast_demand(
 
         forecast_data = []
         for _, row in forecast.iterrows():
-            forecast_data.append({
-                "date": row["ds"].strftime("%Y-%m-%d"),
-                "predicted": float(row["yhat"]),
-                "lower_bound": float(row["yhat_lower"]),
-                "upper_bound": float(row["yhat_upper"]),
-                "is_historical": row["ds"] <= df["ds"].max(),
-            })
+            forecast_data.append(
+                {
+                    "date": row["ds"].strftime("%Y-%m-%d"),
+                    "predicted": float(row["yhat"]),
+                    "lower_bound": float(row["yhat_lower"]),
+                    "upper_bound": float(row["yhat_upper"]),
+                    "is_historical": row["ds"] <= df["ds"].max(),
+                }
+            )
 
         future_only = [f for f in forecast_data if not f["is_historical"]]
         avg_forecast = sum(f["predicted"] for f in future_only) / len(future_only) if future_only else 0
@@ -89,12 +92,12 @@ def forecast_by_product(
 ) -> dict:
     """
     Forecast demand for a specific product.
-    
+
     Args:
         sales_data: List of sales records with product_id, date, quantity
         product_id: Product ID to forecast
         days_to_forecast: Days to forecast
-    
+
     Returns:
         Forecast dict for the product
     """

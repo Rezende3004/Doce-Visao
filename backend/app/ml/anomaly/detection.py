@@ -1,4 +1,5 @@
 """Anomaly detection using Isolation Forest and statistical methods."""
+
 from __future__ import annotations
 
 import logging
@@ -15,13 +16,12 @@ def detect_anomalies_isolation_forest(
     sales_data: list[dict],
     contamination: float = 0.05,
 ) -> dict:
-    """
-    Detect anomalous sales using Isolation Forest.
-    
+    """Detect anomalous sales using Isolation Forest.
+
     Args:
         sales_data: List of sales records with features
         contamination: Expected proportion of anomalies (0.01 to 0.1)
-    
+
     Returns:
         Dict with anomalies detected and metrics
     """
@@ -39,30 +39,32 @@ def detect_anomalies_isolation_forest(
         if "unit_price_cents" in df.columns:
             features.append("unit_price_cents")
 
-        X = df[features].fillna(0)
+        data_features = df[features].fillna(0)
 
         scaler = StandardScaler()
-        X_scaled = scaler.fit_transform(X)
+        data_scaled = scaler.fit_transform(data_features)
 
         model = IsolationForest(
             contamination=contamination,
             random_state=42,
             n_estimators=100,
         )
-        predictions = model.fit_predict(X_scaled)
+        predictions = model.fit_predict(data_scaled)
 
         anomalies = []
         for idx, pred in enumerate(predictions):
             if pred == -1:
                 row = df.iloc[idx]
-                anomalies.append({
-                    "index": idx,
-                    "date": row.get("date"),
-                    "product": row.get("product_name", "Desconhecido"),
-                    "quantity": int(row.get("quantity", 0)),
-                    "total_cents": int(row.get("total_cents", 0)),
-                    "anomaly_score": float(model.score_samples(X_scaled[idx:idx+1])[0]),
-                })
+                anomalies.append(
+                    {
+                        "index": idx,
+                        "date": row.get("date"),
+                        "product": row.get("product_name", "Desconhecido"),
+                        "quantity": int(row.get("quantity", 0)),
+                        "total_cents": int(row.get("total_cents", 0)),
+                        "anomaly_score": float(model.score_samples(data_scaled[idx : idx + 1])[0]),
+                    }
+                )
 
         return {
             "success": True,
@@ -90,11 +92,11 @@ def detect_anomalies_zscore(
 ) -> dict:
     """
     Detect anomalies using Z-score method (simpler, for univariate data).
-    
+
     Args:
         values: List of numerical values
         threshold: Z-score threshold for anomaly detection
-    
+
     Returns:
         Dict with anomalies and statistics
     """
@@ -118,11 +120,7 @@ def detect_anomalies_zscore(
             }
 
         z_scores = np.abs((arr - mean) / std)
-        anomalies = [
-            {"index": i, "value": float(v), "z_score": float(z)}
-            for i, (v, z) in enumerate(zip(values, z_scores))
-            if z > threshold
-        ]
+        anomalies = [{"index": i, "value": float(v), "z_score": float(z)} for i, (v, z) in enumerate(zip(values, z_scores, strict=False)) if z > threshold]
 
         return {
             "success": True,
@@ -150,11 +148,11 @@ def detect_sales_anomalies_by_product(
 ) -> dict:
     """
     Detect anomalies grouped by product.
-    
+
     Args:
         sales_data: Sales records
         method: 'isolation_forest' or 'zscore'
-    
+
     Returns:
         Dict with anomalies per product
     """

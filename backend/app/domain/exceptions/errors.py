@@ -1,4 +1,5 @@
 """Domain exceptions for DoceVisão."""
+
 from __future__ import annotations
 
 

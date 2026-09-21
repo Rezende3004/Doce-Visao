@@ -1,4 +1,5 @@
 """DoceVisão — Dashboard de Business Intelligence para docerias."""
+
 import os
 
 import streamlit as st
@@ -22,4 +23,6 @@ Bem-vindo ao **DoceVisão**! Utilize o menu lateral para navegar entre as págin
 - **Sobre os Indicadores** — Glossário de KPIs
 
 Para começar, importe seus dados na página de **Importação** ou use os dados sintéticos de demonstração.
+
+> **Nota:** O módulo de Análise Inteligente (ML) é experimental e não está disponível neste dashboard principal. Resultados de ML podem não ser conclusivos.
 """)

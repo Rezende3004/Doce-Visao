@@ -1,4 +1,5 @@
 """Importação de dados."""
+
 from __future__ import annotations
 
 import os
@@ -14,41 +15,125 @@ st.title("📥 Importação de Dados")
 
 tab = st.tabs(["Vendas", "Produção", "Histórico"])
 
+# --- State management ---
+if "sales_upload_data" not in st.session_state:
+    st.session_state.sales_upload_data = None
+if "prod_upload_data" not in st.session_state:
+    st.session_state.prod_upload_data = None
+if "sales_preview_result" not in st.session_state:
+    st.session_state.sales_preview_result = None
+if "prod_preview_result" not in st.session_state:
+    st.session_state.prod_preview_result = None
+
+
+def handle_sales_preview():
+    uploaded = st.session_state.get("_sales_upload_widget")
+    if uploaded and st.session_state.sales_upload_data is None:
+        content = uploaded.read()
+        st.session_state.sales_upload_data = (content, uploaded.name)
+        try:
+            preview = api_client.preview_sales(content, uploaded.name)
+            st.session_state.sales_preview_result = preview
+        except Exception as e:
+            st.session_state.sales_preview_result = {"error": str(e)}
+
+
+def handle_prod_preview():
+    uploaded = st.session_state.get("_prod_upload_widget")
+    if uploaded and st.session_state.prod_upload_data is None:
+        content = uploaded.read()
+        st.session_state.prod_upload_data = (content, uploaded.name)
+        try:
+            preview = api_client.preview_production(content, uploaded.name)
+            st.session_state.prod_preview_result = preview
+        except Exception as e:
+            st.session_state.prod_preview_result = {"error": str(e)}
+
+
 with tab[0]:
     st.subheader("Importar Vendas")
     st.markdown("Baixe o modelo: [modelo_vendas.csv](http://localhost:8000/api/v1/imports/templates/sales)")
-    uploaded = st.file_uploader("Selecione o arquivo CSV ou Excel", type=["csv", "xlsx", "xls"], key="sales_upload")
-    if uploaded and st.button("Prévia", key="sales_preview"):
-        content = uploaded.read()
-        try:
-            preview = api_client.preview_sales(content, uploaded.name)
-            st.success(f"Total: {preview['total_rows']} linhas | Válidas: {preview['valid_rows']} | Inválidas: {preview['invalid_rows']}")
-            if preview["errors"]:
+
+    # File uploader with unique key to avoid stale data
+    uploaded = st.file_uploader(
+        "Selecione o arquivo CSV ou Excel",
+        type=["csv", "xlsx"],
+        key="sales_upload",
+    )
+
+    # Store widget value
+    st.session_state["_sales_upload_widget"] = uploaded
+
+    if uploaded:
+        if st.button("Prévia", key="sales_preview_btn"):
+            handle_sales_preview()
+
+        # Persisted preview display
+        preview_result = st.session_state.sales_preview_result
+        if preview_result and "error" not in preview_result:
+            st.success(f"Total: {preview_result['total_rows']} linhas | Válidas: {preview_result['valid_rows']} | Inválidas: {preview_result['invalid_rows']}")
+            if preview_result["errors"]:
                 st.warning("Erros encontrados:")
-                st.dataframe(preview["errors"][:20], use_container_width=True)
-            if st.button("Confirmar Importação", key="sales_confirm", type="primary"):
-                result = api_client.confirm_sales(content, uploaded.name)
-                st.success(f"Importação concluída! Lote #{result['batch_id']}: {result['accepted_rows']} aceitas, {result['rejected_rows']} rejeitadas.")
-        except Exception as e:
-            st.error(f"Erro: {e}")
+                st.dataframe(preview_result["errors"][:20], use_container_width=True)
+
+            # Confirm button always visible when preview exists
+            if st.session_state.sales_upload_data and preview_result["valid_rows"] > 0:
+                if st.button("Confirmar Importação", key="sales_confirm_btn", type="primary", use_container_width=True):
+                    content, fname = st.session_state.sales_upload_data
+                    try:
+                        result = api_client.confirm_sales(content, fname)
+                        st.success(
+                            f"Importação concluída! Lote #{result['batch_id']}: {result['accepted_rows']} aceitas, {result['rejected_rows']} rejeitadas."
+                        )
+                        # Clear state after success
+                        st.session_state.sales_upload_data = None
+                        st.session_state.sales_preview_result = None
+                    except Exception as e:
+                        st.error(f"Erro na confirmação: {e}")
+            elif preview_result["valid_rows"] == 0:
+                st.warning("Nenhuma linha válida para importar.")
+        elif preview_result and "error" in preview_result:
+            st.error(f"Erro na prévia: {preview_result['error']}")
 
 with tab[1]:
     st.subheader("Importar Produção")
     st.markdown("Baixe o modelo: [modelo_producao.csv](http://localhost:8000/api/v1/imports/templates/production)")
-    uploaded_p = st.file_uploader("Selecione o arquivo CSV ou Excel", type=["csv", "xlsx", "xls"], key="prod_upload")
-    if uploaded_p and st.button("Prévia", key="prod_preview"):
-        content = uploaded_p.read()
-        try:
-            preview = api_client.preview_production(content, uploaded_p.name)
-            st.success(f"Total: {preview['total_rows']} linhas | Válidas: {preview['valid_rows']} | Inválidas: {preview['invalid_rows']}")
-            if preview["errors"]:
+
+    uploaded_p = st.file_uploader(
+        "Selecione o arquivo CSV ou Excel",
+        type=["csv", "xlsx"],
+        key="prod_upload",
+    )
+
+    st.session_state["_prod_upload_widget"] = uploaded_p
+
+    if uploaded_p:
+        if st.button("Prévia", key="prod_preview_btn"):
+            handle_prod_preview()
+
+        preview_result = st.session_state.prod_preview_result
+        if preview_result and "error" not in preview_result:
+            st.success(f"Total: {preview_result['total_rows']} linhas | Válidas: {preview_result['valid_rows']} | Inválidas: {preview_result['invalid_rows']}")
+            if preview_result["errors"]:
                 st.warning("Erros encontrados:")
-                st.dataframe(preview["errors"][:20], use_container_width=True)
-            if st.button("Confirmar Importação", key="prod_confirm", type="primary"):
-                result = api_client.confirm_production(content, uploaded_p.name)
-                st.success(f"Importação concluída! Lote #{result['batch_id']}: {result['accepted_rows']} aceitas, {result['rejected_rows']} rejeitadas.")
-        except Exception as e:
-            st.error(f"Erro: {e}")
+                st.dataframe(preview_result["errors"][:20], use_container_width=True)
+
+            if st.session_state.prod_upload_data and preview_result["valid_rows"] > 0:
+                if st.button("Confirmar Importação", key="prod_confirm_btn", type="primary", use_container_width=True):
+                    content, fname = st.session_state.prod_upload_data
+                    try:
+                        result = api_client.confirm_production(content, fname)
+                        st.success(
+                            f"Importação concluída! Lote #{result['batch_id']}: {result['accepted_rows']} aceitas, {result['rejected_rows']} rejeitadas."
+                        )
+                        st.session_state.prod_upload_data = None
+                        st.session_state.prod_preview_result = None
+                    except Exception as e:
+                        st.error(f"Erro na confirmação: {e}")
+            elif preview_result["valid_rows"] == 0:
+                st.warning("Nenhuma linha válida para importar.")
+        elif preview_result and "error" in preview_result:
+            st.error(f"Erro na prévia: {preview_result['error']}")
 
 with tab[2]:
     st.subheader("Histórico de Importações")

@@ -1,10 +1,10 @@
-.PHONY: install dev lint test coverage migrate run-backend run-frontend docker-up docker-down seed
+PYTHON := .venv/bin/python
 
 install:
 	pip install -e ".[dev]"
 
 dev: install
-	alembic upgrade head
+	$(PYTHON) -m alembic upgrade head
 
 lint:
 	ruff check backend/ frontend/
@@ -15,13 +15,13 @@ format:
 	ruff format backend/ frontend/
 
 test:
-	pytest backend/tests -v
+	PYTHONPATH=backend $(PYTHON) -m pytest backend/tests -v
 
 coverage:
-	pytest backend/tests --cov=backend/app --cov-report=term-missing
+	PYTHONPATH=backend $(PYTHON) -m pytest backend/tests --cov=backend/app --cov-report=term-missing
 
 migrate:
-	alembic upgrade head
+	$(PYTHON) -m alembic upgrade head
 
 migrate-create:
 	alembic revision --autogenerate -m "$(msg)"

@@ -1,4 +1,5 @@
 """ML routes — Machine Learning endpoints."""
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Query
@@ -25,6 +26,7 @@ def _build_filters(start_date, end_date, product_id, category, channel_id) -> Sa
     dr = None
     if start_date and end_date:
         from datetime import date as date_type
+
         dr = DateRange(start_date=date_type.fromisoformat(start_date), end_date=date_type.fromisoformat(end_date))
     if not any([dr, product_id, category, channel_id]):
         return None
@@ -44,10 +46,7 @@ def get_demand_forecast(
         filters = _build_filters(start_date, end_date, None, None, None)
         timeline = sales_repo.get_timeline(filters)
 
-        timeline_data = [
-            {"date": t.date.isoformat(), "faturamento_cents": t.faturamento_cents, "num_pedidos": t.num_pedidos}
-            for t in timeline
-        ]
+        timeline_data = [{"date": t.date.isoformat(), "faturamento_cents": t.faturamento_cents, "num_pedidos": t.num_pedidos} for t in timeline]
 
         return forecast_demand(timeline_data, days_to_forecast=days)
     finally:
@@ -83,6 +82,7 @@ def get_sales_anomalies(
 
         if start_date and end_date:
             from datetime import date as date_type
+
             query = query.where(
                 DimDateModel.full_date >= date_type.fromisoformat(start_date),
                 DimDateModel.full_date <= date_type.fromisoformat(end_date),
@@ -191,6 +191,7 @@ def get_all_product_trends(
 
         if start_date and end_date:
             from datetime import date as date_type
+
             query = query.where(
                 DimDateModel.full_date >= date_type.fromisoformat(start_date),
                 DimDateModel.full_date <= date_type.fromisoformat(end_date),
@@ -240,6 +241,7 @@ def get_product_trend(
 
         if start_date and end_date:
             from datetime import date as date_type
+
             query = query.where(
                 DimDateModel.full_date >= date_type.fromisoformat(start_date),
                 DimDateModel.full_date <= date_type.fromisoformat(end_date),
@@ -256,7 +258,12 @@ def get_product_trend(
             for r in rows
         ]
 
-        return classify_product_trend(sales_data, product_id, min_periods=min_periods)
+        return classify_product_trend(
+            sales_data,
+            product_id,
+            min_periods=min_periods,
+            product_name=sales_data[0]["product_name"] if sales_data else None,
+        )
     finally:
         session.close()
 
@@ -265,7 +272,7 @@ def get_product_trend(
 def get_seasonality(
     start_date: str | None = Query(None),
     end_date: str | None = Query(None),
-    period: str = Query("weekly", regex="^(weekly|monthly|quarterly)$"),
+    period: str = Query("weekly", pattern="^(weekly|monthly|quarterly)$"),
 ):
     """Detect seasonality patterns in sales."""
     session = get_session()
@@ -285,6 +292,7 @@ def get_seasonality(
 
         if start_date and end_date:
             from datetime import date as date_type
+
             query = query.where(
                 DimDateModel.full_date >= date_type.fromisoformat(start_date),
                 DimDateModel.full_date <= date_type.fromisoformat(end_date),

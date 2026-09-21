@@ -1,9 +1,26 @@
 """API tests."""
+
 from __future__ import annotations
 
 import pytest
+from app.infrastructure.database import connection
 from app.main import app
 from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+
+@pytest.fixture(autouse=True, scope="module")
+def isolated_database(tmp_path_factory):
+    """Keep API tests independent from the local development database."""
+    db_path = tmp_path_factory.mktemp("api") / "test.db"
+    engine = create_engine(f"sqlite:///{db_path}")
+    connection.Base.metadata.create_all(engine)
+    original_session_factory = connection.SessionLocal
+    connection.SessionLocal = sessionmaker(bind=engine, expire_on_commit=False)
+    yield
+    connection.SessionLocal = original_session_factory
+    engine.dispose()
 
 
 @pytest.fixture
@@ -36,6 +53,10 @@ class TestImports:
 
 
 class TestDashboard:
+    def test_summary_rejects_incomplete_date_range(self, client):
+        response = client.get("/api/v1/dashboard/summary?start_date=2025-01-01")
+        assert response.status_code == 422
+
     def test_summary_empty(self, client):
         response = client.get("/api/v1/dashboard/summary")
         assert response.status_code == 200
@@ -116,7 +137,10 @@ class TestExports:
 
 class TestImportUpload:
     def test_sales_preview_valid(self, client):
-        csv_content = b"data_venda;id_pedido;produto;categoria;quantidade;valor_unitario;status\n01/01/2025;PED-1;Bolo;Bolos;1;50,00;Concluido\n"
+        csv_content = (
+            b"data_venda;id_pedido;produto;categoria;quantidade;valor_unitario;status\n"
+            b"01/01/2025;PED-1;Cocada Branca;Doces de Coco;1;50,00;Concluido\n"
+        )
         response = client.post(
             "/api/v1/imports/sales/preview",
             files={"file": ("test.csv", csv_content, "text/csv")},
@@ -127,8 +151,9 @@ class TestImportUpload:
 
     def test_sales_confirm_valid(self, client):
         import time
+
         ts = int(time.time() * 1000)
-        csv = f"data_venda;id_pedido;produto;categoria;quantidade;valor_unitario;status\n01/01/2025;PED-{ts};Bolo;Bolos;1;50,00;Concluido\n"
+        csv = f"data_venda;id_pedido;produto;categoria;quantidade;valor_unitario;status\n01/01/2025;PED-{ts};Cocada Branca;Doces de Coco;1;50,00;Concluido\n"
         response = client.post(
             "/api/v1/imports/sales/confirm",
             files={"file": ("test_confirm.csv", csv.encode(), "text/csv")},
@@ -138,7 +163,7 @@ class TestImportUpload:
         assert data["batch_id"] > 0
 
     def test_production_preview_valid(self, client):
-        csv_content = b"data;produto;categoria;quantidade_produzida;quantidade_vendida;quantidade_descartada\n06/01/2025;Bolo;Bolos;20;15;5\n"
+        csv_content = b"data;produto;categoria;quantidade_produzida;quantidade_vendida;quantidade_descartada\n06/01/2025;Cocada Branca;Doces de Coco;20;15;5\n"
         response = client.post(
             "/api/v1/imports/production/preview",
             files={"file": ("prod.csv", csv_content, "text/csv")},
@@ -156,8 +181,9 @@ class TestImportUpload:
 
     def test_list_imports_after_confirm(self, client):
         import time
+
         ts = int(time.time() * 1000)
-        csv = f"data_venda;id_pedido;produto;categoria;quantidade;valor_unitario;status\n01/01/2025;PED-{ts};Bolo;Bolos;1;50,00;Concluido\n"
+        csv = f"data_venda;id_pedido;produto;categoria;quantidade;valor_unitario;status\n01/01/2025;PED-{ts};Cocada Branca;Doces de Coco;1;50,00;Concluido\n"
         client.post(
             "/api/v1/imports/sales/confirm",
             files={"file": ("list_test.csv", csv.encode(), "text/csv")},
@@ -168,8 +194,9 @@ class TestImportUpload:
 
     def test_get_import_by_id(self, client):
         import time
+
         ts = int(time.time() * 1000)
-        csv = f"data_venda;id_pedido;produto;categoria;quantidade;valor_unitario;status\n01/01/2025;PED-{ts};Bolo;Bolos;1;50,00;Concluido\n"
+        csv = f"data_venda;id_pedido;produto;categoria;quantidade;valor_unitario;status\n01/01/2025;PED-{ts};Cocada Branca;Doces de Coco;1;50,00;Concluido\n"
         confirm = client.post(
             "/api/v1/imports/sales/confirm",
             files={"file": ("by_id.csv", csv.encode(), "text/csv")},

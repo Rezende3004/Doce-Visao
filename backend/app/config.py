@@ -1,10 +1,15 @@
 from __future__ import annotations
 
+import os
+
 from pydantic_settings import BaseSettings
+
+# Project root is one level above backend/
+_PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
 
 class Settings(BaseSettings):
-    database_url: str = "sqlite:///./docevisao.db"
+    database_url: str = f"sqlite:///{os.path.join(_PROJECT_ROOT, 'docevisao.db')}"
     api_host: str = "0.0.0.0"
     api_port: int = 8000
     cors_origins: str = "http://localhost:8501"

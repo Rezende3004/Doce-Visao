@@ -1,3 +1,8 @@
+# Virtual environments
+.venv/
+venv/
+
+# Python bytecode
 __pycache__/
 *.py[cod]
 *.egg-info/
@@ -5,15 +10,41 @@ dist/
 build/
 .eggs/
 *.egg
-.env
-*.db
-*.sqlite3
-.venv/
-venv/
+
+# Coverage reports
 htmlcov/
 .coverage
+coverage.json
+html/
+lcov-report/
+
+# Test caches
 .pytest_cache/
 .ruff_cache/
+
+# Logs and temporary files
 *.log
 uploads/
+
+# Database files
+*.db
+*.sqlite3
+*.db-journal
+*.db-wal
+*.db-shm
+
+# IDE
+.idea/
+.vscode/
+.serena/
+*.swp
+*.swo
+
+# Environment
+.env
+
+# Generated / derived
+sample_data/*.csv
+sample_data/*.xlsx
 graphify-out/
+PI.zip

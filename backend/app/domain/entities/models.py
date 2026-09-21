@@ -3,6 +3,7 @@
 These are pure Python dataclasses — no ORM dependencies.
 Infrastructure layer maps these to/from SQLAlchemy models.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

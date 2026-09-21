@@ -1,4 +1,5 @@
 """Import routes — upload, preview, confirm, list, errors."""
+
 from __future__ import annotations
 
 import io
@@ -32,8 +33,8 @@ def _validate_upload(file: UploadFile) -> bytes:
     if not file.filename:
         raise ValueError("Nome do arquivo ausente.")
     lower = file.filename.lower()
-    if not lower.endswith((".csv", ".xlsx", ".xls")):
-        raise ValueError("Formato não suportado. Use CSV ou Excel (.xlsx/.xls).")
+    if not lower.endswith((".csv", ".xlsx")):
+        raise ValueError("Formato não suportado. Use CSV (.csv) ou Excel (.xlsx).")
     content = file.file.read()
     if len(content) > settings.max_upload_bytes:
         raise ValueError(f"Arquivo excede o tamanho máximo de {settings.max_upload_size_mb}MB.")
@@ -42,26 +43,35 @@ def _validate_upload(file: UploadFile) -> bytes:
 
 @router.get("/templates/sales")
 def sales_template():
-    columns = ["data_venda", "id_pedido", "id_item", "produto", "categoria", "quantidade",
-               "valor_unitario", "desconto", "canal", "forma_pagamento", "custo_unitario", "status"]
+    columns = [
+        "data_venda",
+        "id_pedido",
+        "id_item",
+        "produto",
+        "categoria",
+        "quantidade",
+        "valor_unitario",
+        "desconto",
+        "canal",
+        "forma_pagamento",
+        "custo_unitario",
+        "status",
+    ]
     df = pd.DataFrame(columns=columns)
     buf = io.BytesIO()
     df.to_csv(buf, index=False)
     buf.seek(0)
-    return StreamingResponse(buf, media_type="text/csv",
-                             headers={"Content-Disposition": "attachment; filename=modelo_vendas.csv"})
+    return StreamingResponse(buf, media_type="text/csv", headers={"Content-Disposition": "attachment; filename=modelo_vendas.csv"})
 
 
 @router.get("/templates/production")
 def production_template():
-    columns = ["data", "produto", "categoria", "quantidade_produzida", "quantidade_vendida",
-               "quantidade_descartada", "motivo_descarte"]
+    columns = ["data", "produto", "categoria", "quantidade_produzida", "quantidade_vendida", "quantidade_descartada", "motivo_descarte"]
     df = pd.DataFrame(columns=columns)
     buf = io.BytesIO()
     df.to_csv(buf, index=False)
     buf.seek(0)
-    return StreamingResponse(buf, media_type="text/csv",
-                             headers={"Content-Disposition": "attachment; filename=modelo_producao.csv"})
+    return StreamingResponse(buf, media_type="text/csv", headers={"Content-Disposition": "attachment; filename=modelo_producao.csv"})
 
 
 @router.post("/sales/preview", response_model=ImportPreviewResponse)
@@ -148,6 +158,7 @@ def get_import(batch_id: int, import_repo: ImportRepository = Depends(get_import
     batch = import_repo.get_batch(batch_id)
     if not batch:
         from fastapi import HTTPException
+
         raise HTTPException(status_code=404, detail="Lote de importação não encontrado.")
     return ImportBatchResponse(
         id=batch.id,

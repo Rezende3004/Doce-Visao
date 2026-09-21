@@ -1,4 +1,5 @@
 """Visão Geral — KPIs e resumo do período."""
+
 from __future__ import annotations
 
 import os
@@ -38,8 +39,9 @@ except Exception as e:
     st.stop()
 
 c1, c2, c3, c4 = st.columns(4)
-c1.metric("Faturamento", summary["faturamento"],
-          delta=f"{summary['crescimento_percentual']:.1f}%" if summary.get("crescimento_percentual") is not None else None)
+c1.metric(
+    "Faturamento", summary["faturamento"], delta=f"{summary['crescimento_percentual']:.1f}%" if summary.get("crescimento_percentual") is not None else None
+)
 c2.metric("Pedidos", summary["num_pedidos"])
 c3.metric("Ticket Médio", summary["ticket_medio"])
 c4.metric("Itens Vendidos", summary["itens_vendidos"])
@@ -51,13 +53,15 @@ st.subheader("Evolução do Faturamento")
 try:
     timeline = get_timeline(start_date=sd, end_date=ed)
     if timeline:
-        fig = go.Figure(go.Scatter(
-            x=[p["date"] for p in timeline],
-            y=[p["faturamento_cents"] / 100 for p in timeline],
-            mode="lines",
-            fill="tozeroy",
-            line=dict(color="#D4577B"),
-        ))
+        fig = go.Figure(
+            go.Scatter(
+                x=[p["date"] for p in timeline],
+                y=[p["faturamento_cents"] / 100 for p in timeline],
+                mode="lines",
+                fill="tozeroy",
+                line=dict(color="#D4577B"),
+            )
+        )
         fig.update_layout(yaxis_title="Faturamento (R$)", xaxis_title="Data", height=350)
         st.plotly_chart(fig, use_container_width=True)
     else:
@@ -69,11 +73,13 @@ st.subheader("Vendas por Dia da Semana")
 try:
     weekdays = get_by_weekday(start_date=sd, end_date=ed)
     if weekdays:
-        fig2 = go.Figure(go.Bar(
-            x=[w["weekday"] for w in weekdays],
-            y=[w["faturamento_cents"] / 100 for w in weekdays],
-            marker_color="#D4577B",
-        ))
+        fig2 = go.Figure(
+            go.Bar(
+                x=[w["weekday"] for w in weekdays],
+                y=[w["faturamento_cents"] / 100 for w in weekdays],
+                marker_color="#D4577B",
+            )
+        )
         fig2.update_layout(yaxis_title="Faturamento (R$)", height=300)
         st.plotly_chart(fig2, use_container_width=True)
     else:

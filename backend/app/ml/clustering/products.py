@@ -1,4 +1,5 @@
-"""Product clustering using K-means and feature engineering."""
+"""Product clustering using K-means and feature engineering."""  # noqa: N806 — X, X_scaled are ML conventions
+
 from __future__ import annotations
 
 import logging
@@ -17,11 +18,11 @@ def cluster_products(
 ) -> dict:
     """
     Cluster products based on sales metrics using K-means.
-    
+
     Args:
         product_metrics: List of dicts with product_id, name, quantity, revenue, margin, etc.
         n_clusters: Number of clusters (2-5 recommended)
-    
+
     Returns:
         Dict with cluster assignments and characteristics
     """
@@ -98,7 +99,7 @@ def cluster_products(
 def _interpret_clusters(clusters: list[dict]) -> dict:
     """
     Interpret cluster characteristics and assign meaningful labels.
-    
+
     Returns:
         Dict with cluster interpretations
     """
@@ -149,7 +150,7 @@ def optimal_number_of_clusters(
 ) -> dict:
     """
     Find optimal number of clusters using elbow method.
-    
+
     Returns:
         Dict with inertia values for different k
     """
@@ -174,10 +175,12 @@ def optimal_number_of_clusters(
         for k in K_range:
             kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
             kmeans.fit(X_scaled)
-            inertias.append({
-                "k": k,
-                "inertia": float(kmeans.inertia_),
-            })
+            inertias.append(
+                {
+                    "k": k,
+                    "inertia": float(kmeans.inertia_),
+                }
+            )
 
         return {
             "success": True,

@@ -1,4 +1,5 @@
 """Data Transfer Objects for analytics and KPIs."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

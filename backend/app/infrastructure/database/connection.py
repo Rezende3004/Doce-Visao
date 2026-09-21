@@ -1,4 +1,5 @@
 """SQLAlchemy database setup."""
+
 from __future__ import annotations
 
 from sqlalchemy import create_engine, event

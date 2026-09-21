@@ -1,4 +1,5 @@
 """API client for the Streamlit frontend."""
+
 from __future__ import annotations
 
 import os
@@ -18,8 +19,9 @@ def health() -> dict:
 
 
 def get_summary(start_date=None, end_date=None, product_id=None, category=None, channel_id=None) -> dict:
-    r = _client.get("/api/v1/dashboard/summary", params=_params(
-        start_date=start_date, end_date=end_date, product_id=product_id, category=category, channel_id=channel_id))
+    r = _client.get(
+        "/api/v1/dashboard/summary", params=_params(start_date=start_date, end_date=end_date, product_id=product_id, category=category, channel_id=channel_id)
+    )
     r.raise_for_status()
     return r.json()
 
@@ -43,8 +45,7 @@ def get_by_channel(start_date=None, end_date=None, **kw) -> list[dict]:
 
 
 def get_ranking(sort_by="quantity", limit=20, start_date=None, end_date=None, **kw) -> list[dict]:
-    r = _client.get("/api/v1/products/ranking", params=_params(
-        sort_by=sort_by, limit=limit, start_date=start_date, end_date=end_date, **kw))
+    r = _client.get("/api/v1/products/ranking", params=_params(sort_by=sort_by, limit=limit, start_date=start_date, end_date=end_date, **kw))
     r.raise_for_status()
     return r.json()
 

@@ -1,5 +1,8 @@
-"""Money value object — all monetary values in cents (int)."""
+"""Money value object — all monetary values in cents (int). Uses integer arithmetic."""
+
 from __future__ import annotations
+
+import re
 
 from app.domain.exceptions.errors import NegativeValueError
 
@@ -14,10 +17,35 @@ class Money:
 
     @classmethod
     def from_brl_string(cls, value: str) -> Money:
-        cleaned = value.strip().replace("R$", "").replace(" ", "")
-        cleaned = cleaned.replace(".", "").replace(",", ".")
-        brl = float(cleaned)
-        return cls(int(round(brl * 100)))
+        """Parse Brazilian currency string to cents using pure integer math.
+
+        Accepts: 10 | 10,00 | 10.00 | R$ 10,00 | 1.234,56
+        Raises ValueError on invalid formats.
+        """
+        cleaned = value.strip().replace("R$", "").strip()
+        if not cleaned:
+            return cls(0)
+
+        # Validate format: only digits, dots, commas allowed
+        if not re.fullmatch(r"[.\d,]+", cleaned):
+            raise ValueError(f"Valor monetário inválido: {value}")
+
+        # Brazilian number parsing (no float involved):
+        # - dot = thousands separator
+        # - comma = decimal separator
+        if "," in cleaned:
+            integer_part, decimal_part = cleaned.rsplit(",", 1)
+            integer_part = integer_part.replace(".", "").strip()
+            decimal_part = decimal_part.strip()[:2].ljust(2, "0")
+            total_cents_str = f"{integer_part}{decimal_part}"
+        else:
+            # No comma — dots are thousands separators
+            total_cents_str = cleaned.replace(".", "").strip()
+
+        if not total_cents_str.isdigit():
+            raise ValueError(f"Valor monetário inválido: {value}")
+
+        return cls(int(total_cents_str))
 
     @classmethod
     def zero(cls) -> Money:
